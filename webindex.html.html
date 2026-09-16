@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apontamento de Horas</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --surface-2:#f0f2f5; --border:#dde2e8; --text:#1b2330; --muted:#5b6878;
+  --accent:#1f64d6; --accent-soft:#e3ecfb; --on-accent:#fff;
+  --normal:#23794a; --normal-bg:#e1f2e8; --extra:#a94f0b; --extra-bg:#fbe8d8;
+  --danger:#c02d2d; --danger-bg:#fae3e3; --holiday:#7d36ad; --holiday-bg:#efe2f7;
+  --weekend-bg:#eceff3; --warn:#8a5d00; --warn-bg:#fff2cf;
+  --radius:10px; --shadow:0 1px 2px rgba(16,24,40,.06);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1318; --surface:#171c23; --surface-2:#1f262f; --border:#2d3541; --text:#e5eaf0; --muted:#98a3b2;
+    --accent:#5b93ff; --accent-soft:#1c2b45; --on-accent:#0b1220;
+    --normal:#62c98f; --normal-bg:#15301f; --extra:#f0a261; --extra-bg:#3a2616;
+    --danger:#ff7a7a; --danger-bg:#3b1b1b; --holiday:#c893f0; --holiday-bg:#2d1f3a;
+    --weekend-bg:#1b2129; --warn:#e6c15a; --warn-bg:#33290f;
+    --shadow:none; color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+h1{font-size:17px;margin:0;font-weight:650}
+h2{font-size:14px;margin:0 0 10px;font-weight:650}
+h3{font-size:15px;margin:0 0 8px}
+.muted{color:var(--muted)} .small{font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+input,select{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 8px;min-width:0}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[type=checkbox]{width:16px;height:16px;padding:0;accent-color:var(--accent)}
+.btn{border:1px solid var(--border);background:var(--surface);border-radius:7px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.stop{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
+.btn.sm{padding:3px 8px;font-size:12px}
+.btn.icon{padding:4px 9px}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--surface-2)}
+
+.topbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.brand{display:flex;flex-direction:column}
+.timer{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.timer input{width:170px}
+.timer #tDesc{width:210px}
+.clock{font-variant-numeric:tabular-nums;font-size:18px;font-weight:600;min-width:86px;text-align:center}
+.clock.running{color:var(--danger)}
+.running-info{font-size:12px;color:var(--muted)}
+
+main{max-width:1280px;margin:0 auto;padding:14px 16px 96px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px;overflow-x:auto}
+.tabs button{border:0;background:none;padding:8px 12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);font-weight:600}
+.tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab{display:none}
+.tab.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);margin-bottom:14px}
+
+.day-grid{display:grid;grid-template-columns:290px minmax(0,1fr);gap:14px;align-items:start}
+.day-head{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.badge.util{background:var(--accent-soft);color:var(--accent)}
+.badge.fds{background:var(--weekend-bg);color:var(--muted)}
+.badge.feriado{background:var(--holiday-bg);color:var(--holiday)}
+.badge.normal{background:var(--normal-bg);color:var(--normal)}
+.badge.extra{background:var(--extra-bg);color:var(--extra)}
+.badge.warn{background:var(--warn-bg);color:var(--warn)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.kpi .lbl{font-size:12px;color:var(--muted)}
+.kpi .val{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
+.kpi .sub{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.kpi.normal .val{color:var(--normal)} .kpi.extra .val{color:var(--extra)}
+
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+td.num,th.num{text-align:right}
+tr.split td{border-top:0}
+tr.total td{font-weight:650;border-top:2px solid var(--border)}
+.tbl-wrap{overflow-x:auto}
+.empty{color:var(--muted);padding:14px 4px}
+.actions{white-space:nowrap;text-align:right}
+.cont{color:var(--muted);font-size:12px}
+
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end}
+.form-grid label,.field{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.form-grid .wide{grid-column:span 2}
+.check{flex-direction:row!important;align-items:center;gap:6px!important;color:var(--text)!important;font-size:13px!important}
+.form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.msg{margin-top:10px;padding:8px 10px;border-radius:7px;font-size:13px;display:none}
+.msg.show{display:block}
+.msg.err{background:var(--danger-bg);color:var(--danger)}
+.msg.ok{background:var(--normal-bg);color:var(--normal)}
+
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cal-head strong{text-transform:capitalize}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal .dow{font-size:11px;color:var(--muted);text-align:center;padding:2px 0}
+.cal .d{border:1px solid transparent;border-radius:7px;background:transparent;padding:3px 0 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;min-height:40px}
+.cal .d:hover{border-color:var(--border)}
+.cal .d .n{font-size:13px;font-weight:600}
+.cal .d .h{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cal .d.out{opacity:.35}
+.cal .d.fds{background:var(--weekend-bg)}
+.cal .d.feriado{background:var(--holiday-bg)}
+.cal .d.feriado .n{color:var(--holiday)}
+.cal .d.has-extra .h{color:var(--extra);font-weight:600}
+.cal .d.today .n{text-decoration:underline}
+.cal .d.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+
+.chat{position:fixed;right:16px;bottom:16px;width:320px;height:min(440px,calc(100vh - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 32px rgba(0,0,0,.18);display:flex;flex-direction:column;z-index:40;overflow:hidden}
+.chat.closed{display:none}
+@media (min-width:1000px){body.chat-open main{padding-right:352px}}
+.chat-fab{position:fixed;right:16px;bottom:16px;z-index:39;display:none;align-items:center;gap:8px;border:0;border-radius:999px;padding:8px 16px 8px 8px;background:var(--accent);color:var(--on-accent);font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.chat.closed ~ .chat-fab{display:flex}
+.avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none;background:var(--on-accent);color:var(--accent)}
+.chat-fab .avatar{width:30px;height:30px}
+.chat-head{padding:10px 12px;display:flex;align-items:center;gap:10px;background:var(--accent);color:var(--on-accent)}
+.chat-head .who{flex:1;line-height:1.25}
+.chat-head .status{font-size:11px;opacity:.9}
+.chat-head .status::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ade80;margin-right:5px;vertical-align:1px}
+.chat-head .btn{background:transparent;border-color:transparent;color:inherit;font-size:18px;line-height:1;padding:2px 8px}
+.chat-head .btn:hover{background:rgba(255,255,255,.18)}
+.chat-log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.chips{display:flex;gap:6px;padding:6px 10px 0;overflow-x:auto;flex:none}
+.chip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.bubble{max-width:92%;padding:8px 10px;border-radius:10px;font-size:13px;word-wrap:break-word}
+.bubble.user{align-self:flex-end;background:var(--accent);color:var(--on-accent);border-bottom-right-radius:3px}
+.bubble.bot{align-self:flex-start;background:var(--surface-2);border-bottom-left-radius:3px}
+.bubble table{margin:6px 0;font-size:12px}
+.bubble th,.bubble td{padding:3px 5px}
+.bubble ul{margin:4px 0;padding-left:18px}
+.bubble code{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:0 4px;font-size:12px}
+.bubble .btns{display:flex;gap:6px;margin-top:8px}
+.chat-form{display:flex;gap:6px;padding:10px;border-top:1px solid var(--border)}
+.chat-form input{flex:1}
+
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;max-width:440px;width:100%}
+.modal-body{color:var(--muted);margin-bottom:14px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 14px;border-radius:8px;z-index:60;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.banner{background:var(--warn-bg);color:var(--warn);padding:8px 16px;font-size:13px;display:none}
+.banner.show{display:block}
+.banner .btn{margin-left:6px}
+.userbox{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.sync{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--surface-2)}
+.sync.ok{color:var(--normal);background:var(--normal-bg)}
+.sync.busy{color:var(--warn);background:var(--warn-bg)}
+.sync.err{color:var(--danger);background:var(--danger-bg)}
+.auth{position:fixed;inset:0;z-index:70;background:var(--bg);display:none;align-items:center;justify-content:center;padding:16px}
+.auth.show{display:flex}
+.auth-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;box-shadow:var(--shadow)}
+.auth-card h1{font-size:20px;margin-bottom:4px}
+.auth-card form{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+.auth-card label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.auth-card input{padding:9px 10px}
+.auth-card .btn.primary{padding:9px}
+.auth-card a{color:var(--accent);font-size:13px}
+
+.lv-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface)}
+.lv-bar.done{border-color:var(--normal);background:var(--normal-bg)}
+.lv-bar.pend{border-color:var(--warn);background:var(--warn-bg)}
+.lv-bar label{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
+.lv-bar input{width:18px;height:18px}
+.cal .d .h.lv::before{content:"✓ ";color:var(--normal);font-weight:700}
+@media (max-width:760px){
+  .chat{width:calc(100vw - 24px);right:12px;bottom:12px}
+  .day-grid{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .timer input,.timer #tDesc{width:100%}
+  .timer{width:100%}
+  .form-grid .wide{grid-column:auto}
+}
+</style>
+</head>
+<body>
+<div class="auth" id="auth" role="dialog" aria-modal="true" aria-label="Acesso">
+  <div class="auth-card">
+    <h1>Apontamento de Horas</h1>
+    <div class="muted small">Controle de horas por chamado</div>
+    <div data-view="loading"><p class="muted">Carregando seus dados…</p></div>
+    <div data-view="login" hidden>
+      <form id="loginForm" autocomplete="on">
+        <label>E-mail<input type="email" id="loginEmail" required autocomplete="username"></label>
+        <label>Senha<input type="password" id="loginPass" required autocomplete="current-password"></label>
+        <button class="btn primary" id="loginBtn">Entrar</button>
+        <a href="#" id="forgotLink">Esqueci minha senha</a>
+      </form>
+    </div>
+    <div data-view="reset" hidden>
+      <form id="resetForm">
+        <label>E-mail da conta<input type="email" id="resetEmail" required></label>
+        <button class="btn primary">Enviar link</button>
+        <a href="#" id="backLogin">Voltar para o login</a>
+      </form>
+    </div>
+    <div data-view="newpass" hidden>
+      <form id="newPassForm">
+        <label>Nova senha<input type="password" id="newPass" required minlength="8" autocomplete="new-password"></label>
+        <label>Repita a nova senha<input type="password" id="newPass2" required minlength="8" autocomplete="new-password"></label>
+        <button class="btn primary">Salvar nova senha</button>
+      </form>
+    </div>
+    <div id="authMsg" class="msg"></div>
+  </div>
+</div>
+<div id="banner" class="banner"></div>
+<header class="topbar">
+  <div class="brand">
+    <h1>Apontamento de Horas</h1>
+    <span id="runningInfo" class="running-info">Nenhum apontamento em andamento</span>
+  </div>
+  <div class="userbox">
+    <span id="syncStatus" class="sync">—</span>
+    <span id="userEmail"></span>
+    <button class="btn sm" id="logoutBtn">Sair</button>
+  </div>
+  <div class="timer">
+    <input id="tTicket" list="ticketList" placeholder="Chamado" autocomplete="off" aria-label="Chamado do cronômetro">
+    <input id="tDesc" placeholder="Descrição (opcional)" maxlength="200" aria-label="Descrição do cronômetro">
+    <span id="tClock" class="clock">00:00:00</span>
+    <button id="tBtn" class="btn primary">Iniciar</button>
+  </div>
+</header>
+
+<div class="layout">
+<main>
+  <nav class="tabs" role="tablist">
+    <button data-tab="dia" class="active" role="tab">Dia</button>
+    <button data-tab="relatorios" role="tab">Relatórios</button>
+    <button data-tab="feriados" role="tab">Feriados</button>
+    <button data-tab="config" role="tab">Configurações</button>
+  </nav>
+
+  <!-- DIA -->
+  <section id="tab-dia" class="tab active">
+    <div class="day-grid">
+      <div class="card">
+        <div class="cal-head">
+          <button class="btn ghost icon" id="calPrev" aria-label="Mês anterior">‹</button>
+          <strong id="calLabel"></strong>
+          <button class="btn ghost icon" id="calNext" aria-label="Próximo mês">›</button>
+        </div>
+        <div class="cal" id="cal"></div>
+        <div class="legend">
+          <span><i style="background:var(--weekend-bg);border:1px solid var(--border)"></i>Fim de semana</span>
+          <span><i style="background:var(--holiday-bg)"></i>Feriado</span>
+          <span><i style="background:var(--extra)"></i>Com excedente</span>
+          <span><b style="color:var(--normal)">✓</b> <span id="legendTool">Lançado no Liveops</span></span>
+        </div>
+        <div id="calHolidays" class="small muted" style="margin-top:10px"></div>
+      </div>
+
+      <div>
+        <div class="day-head">
+          <button class="btn icon" id="dPrev" aria-label="Dia anterior">‹</button>
+          <input type="date" id="dDate" aria-label="Data">
+          <button class="btn icon" id="dNext" aria-label="Próximo dia">›</button>
+          <button class="btn" id="dToday">Hoje</button>
+          <strong id="dLabel"></strong>
+          <span id="dKind" class="badge"></span>
+        </div>
+        <div class="kpis" id="dKpis"></div>
+        <div class="lv-bar" id="lvBar">
+          <label><input type="checkbox" id="lvCheck"> <span id="lvLabel">Horas deste dia apontadas no Liveops</span></label>
+          <span id="lvInfo" class="small muted"></span>
+        </div>
+
+        <div class="card">
+          <h2>Apontamentos do dia</h2>
+          <div class="tbl-wrap" id="dTable"></div>
+        </div>
+
+        <div class="card">
+          <h2 id="formTitle">Novo apontamento</h2>
+          <form id="entryForm" autocomplete="off">
+            <div class="form-grid">
+              <label>Data<input type="date" id="fDate" required></label>
+              <label>Início<input type="time" id="fStart" required></label>
+              <label>Fim<input type="time" id="fEnd" required></label>
+              <label>Chamado<input id="fTicket" list="ticketList" placeholder="INC0012345" required></label>
+              <label class="wide">Descrição<input id="fDesc" maxlength="200" placeholder="Opcional"></label>
+              <label class="check"><input type="checkbox" id="fManual"> Marcar como excedente (manual)</label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn primary" id="fSave">Salvar</button>
+              <button type="button" class="btn" id="fCancel" hidden>Cancelar edição</button>
+              <button type="button" class="btn" id="fJornada" title="Cria os dois blocos do horário de trabalho configurado">Lançar jornada padrão</button>
+            </div>
+            <div id="fMsg" class="msg"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RELATORIOS -->
+  <section id="tab-relatorios" class="tab">
+    <div class="card">
+      <div class="row">
+        <label class="field">De<input type="date" id="rFrom"></label>
+        <label class="field">Até<input type="date" id="rTo"></label>
+        <label class="field">Chamado<input id="rTicket" list="ticketList" placeholder="Todos"></label>
+        <label class="field">Agrupar por
+          <select id="rGroup">
+            <option value="dia">Dia</option>
+            <option value="chamado">Chamado</option>
+            <option value="semana">Semana</option>
+            <option value="mes">Mês</option>
+            <option value="detalhe">Detalhado</option>
+          </select>
+        </label>
+        <button class="btn primary" id="rCsv">Exportar CSV</button>
+      </div>
+      <div class="quick">
+        <button class="btn sm" data-q="hoje">Hoje</button>
+        <button class="btn sm" data-q="semana">Esta semana</button>
+        <button class="btn sm" data-q="semanaant">Semana passada</button>
+        <button class="btn sm" data-q="mes">Este mês</button>
+        <button class="btn sm" data-q="mesant">Mês passado</button>
+        <button class="btn sm" data-q="ano">Este ano</button>
+      </div>
+      <div class="kpis" id="rKpis"></div>
+      <div class="tbl-wrap" id="rTable"></div>
+    </div>
+  </section>
+
+  <!-- FERIADOS -->
+  <section id="tab-feriados" class="tab">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h2 style="margin:0">Feriados — São Paulo (capital)</h2>
+          <div class="small muted">Nacionais, estaduais (SP) e municipais (São Paulo). Todas as horas em feriado contam como excedente.</div>
+        </div>
+        <div class="row">
+          <button class="btn icon" id="hPrev" aria-label="Ano anterior">‹</button>
+          <strong id="hYear" class="num"></strong>
+          <button class="btn icon" id="hNext" aria-label="Próximo ano">›</button>
+        </div>
+      </div>
+      <div class="tbl-wrap" id="hTable" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>Pontos facultativos</h2>
+      <div class="small muted" style="margin-bottom:8px">Por padrão, são dias normais. Marque para tratar como feriado.</div>
+      <div class="tbl-wrap" id="hFacult"></div>
+    </div>
+    <div class="card">
+      <h2>Feriados personalizados</h2>
+      <div class="small muted" style="margin-bottom:8px">Use para feriado novo, ponte decretada ou recesso.</div>
+      <form id="hForm" class="row">
+        <label class="field">Data<input type="date" id="hDate" required></label>
+        <label class="field" style="flex:1;min-width:180px">Nome<input id="hName" required maxlength="80"></label>
+        <label class="field">Esfera
+          <select id="hEsfera"><option>Municipal</option><option>Estadual</option><option>Nacional</option><option>Outro</option></select>
+        </label>
+        <label class="check"><input type="checkbox" id="hRecurring"> Repete todo ano</label>
+        <button class="btn primary">Adicionar</button>
+      </form>
+      <div class="tbl-wrap" id="hCustom" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section id="tab-config" class="tab">
+    <div class="card">
+      <h2>Meu perfil e lembretes</h2>
+      <form id="pForm">
+        <div class="form-grid">
+          <label>Nome<input id="pNome" maxlength="80"></label>
+          <label class="wide">E-mail<input id="pEmail" disabled></label>
+        </div>
+        <div class="form-grid" style="margin-top:10px">
+          <label class="check"><input type="checkbox" id="pStartOn"> Lembrete no início do dia</label>
+          <label>Horário<input type="time" id="pStartAt"></label>
+          <label class="check"><input type="checkbox" id="pEndOn"> Lembrete no fim do dia</label>
+          <label>Horário<input type="time" id="pEndAt"></label>
+        </div>
+        <div class="small muted" style="margin-top:8px">Os e-mails saem só em dias úteis (sem fins de semana e feriados de São Paulo). O envio começa quando a função de lembretes estiver publicada.</div>
+        <div class="form-actions"><button class="btn primary">Salvar perfil</button></div>
+        <div id="pMsg" class="msg"></div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Chamados padrão</h2>
+      <div class="small muted" style="margin-bottom:10px">O chamado marcado como padrão é usado quando você não informa o chamado no chat, no cronômetro ou no formulário.</div>
+      <div class="tbl-wrap" id="kTable"></div>
+      <form id="kForm" class="row" style="margin-top:12px">
+        <label class="field">Chamado<input id="kTicket" required maxlength="40" placeholder="Ex.: INC0012345"></label>
+        <label class="field" style="flex:1;min-width:180px">Descrição<input id="kDesc" maxlength="80" placeholder="Opcional"></label>
+        <label class="check"><input type="checkbox" id="kDefault"> Tornar padrão</label>
+        <button class="btn primary">Adicionar</button>
+      </form>
+      <div id="kMsg" class="msg"></div>
+    </div>
+    <div class="card">
+      <h2>Ferramenta da consultoria</h2>
+      <form id="lvForm" class="row">
+        <label class="field" style="min-width:220px">Nome da ferramenta onde as horas são lançadas<input id="lvTool" required maxlength="40"></label>
+        <button class="btn primary">Salvar</button>
+      </form>
+      <div class="small muted" style="margin-top:8px">Aparece na marcação diária da aba Dia, no calendário e nos relatórios.</div>
+    </div>
+    <div class="card">
+      <h2>Jornada</h2>
+      <form id="cForm">
+        <div class="form-grid">
+          <label>Jornada diária (horas)<input type="number" id="cJornada" min="1" max="24" step="0.5" required></label>
+          <label>Início do expediente<input type="time" id="cWorkStart" required></label>
+          <label>Início do intervalo<input type="time" id="cLunchStart" required></label>
+          <label>Fim do intervalo<input type="time" id="cLunchEnd" required></label>
+          <label>Fim do expediente<input type="time" id="cWorkEnd" required></label>
+          <label>Início padrão no chat<input type="time" id="cChatStart" required></label>
+        </div>
+        <div class="small muted" style="margin-top:8px">Apontamentos fora do expediente em dia útil recebem um alerta, mas podem ser gravados. O chat lança as horas corridas a partir do início padrão.</div>
+        <div class="form-actions"><button class="btn primary">Salvar configurações</button></div>
+        <div id="cMsg" class="msg"></div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Cópia de segurança</h2>
+      <div class="small muted" style="margin-bottom:10px">Os dados ficam na nuvem e aparecem em qualquer dispositivo com o seu login. Use o backup para guardar uma cópia ou importar os dados da versão offline.</div>
+      <div class="row">
+        <button class="btn primary" id="bExport">Exportar backup (JSON)</button>
+        <button class="btn" id="bImport">Importar backup</button>
+        <input type="file" id="bFile" accept=".json,application/json" hidden>
+        <button class="btn danger" id="bClear">Apagar todos os dados</button>
+      </div>
+      <div id="bInfo" class="small muted" style="margin-top:10px"></div>
+    </div>
+  </section>
+</main>
+
+<aside class="chat" id="chat" aria-label="Assistente Pontual">
+  <div class="chat-head">
+    <div class="avatar" aria-hidden="true">P</div>
+    <div class="who"><strong>Pontual</strong><div class="status">Online · pronto para ajudar</div></div>
+    <button class="btn" id="chatMin" title="Minimizar" aria-label="Minimizar chat">–</button>
+  </div>
+  <div class="chat-log" id="chatLog" aria-live="polite"></div>
+  <div class="chips" id="chatChips">
+    <button class="chip" data-send="aponta 8h hoje">8h hoje</button>
+    <button class="chip" data-fill="2h de HE hoje">HE hoje</button>
+    <button class="chip" data-send="quanto apontei hoje?">Meu dia</button>
+    <button class="chip" data-send="pendentes no liveops">Pendentes</button>
+    <button class="chip" data-send="ajuda">Ajuda</button>
+  </div>
+  <form class="chat-form" id="chatForm" autocomplete="off">
+    <input id="chatInput" placeholder="Ex.: aponta 8h hoje" aria-label="Mensagem para o Pontual">
+    <button class="btn primary">Enviar</button>
+  </form>
+</aside>
+<button class="chat-fab" id="chatFab" aria-label="Abrir chat"><span class="avatar">P</span>Precisa de ajuda?</button>
+</div>
+
+<datalist id="ticketList"></datalist>
+<div id="toast" class="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= Utilidades ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const pad = n => String(n).padStart(2, '0');
+const DOW = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const DOW_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fromISO = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays = (s, n) => { const d = fromISO(s); d.setDate(d.getDate()+n); return toISO(d); };
+const todayISO = () => toISO(new Date());
+const fmtDate = s => { const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; };
+const dowName = s => DOW[fromISO(s).getDay()];
+const fmtMin = m => { m = ((m % 1440) + 1440) % 1440; return `${pad(Math.floor(m/60))}:${pad(m%60)}`; };
+const fmtDur = m => { m = Math.round(m); return `${pad(Math.floor(m/60))}:${pad(m%60)}`; };
+const fmtDec = m => (m/60).toFixed(2).replace('.', ',');
+const parseHM = s => { const r = /^(\d{1,2}):(\d{2})/.exec(s || ''); if (!r) return null; const h = +r[1], mi = +r[2]; return (h > 23 || mi > 59) ? null : h*60 + mi; };
+const mondayOf = s => addDays(s, -((fromISO(s).getDay() + 6) % 7));
+const monthEnd = ym => { const [y,m] = ym.split('-').map(Number); return toISO(new Date(y, m, 0)); };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const uid = () => {
+  try { if (crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+};
+const hoursLabel = m => { const h = m/60; return (Number.isInteger(h) ? h : h.toFixed(1).replace('.', ',')) + 'h'; };
+
+function toast(t) {
+  const el = $('#toast'); el.textContent = t; el.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function showMsg(el, text, kind) { el.textContent = text; el.className = 'msg show ' + kind; }
+function hideMsg(el) { el.className = 'msg'; el.textContent = ''; }
+
+function modal(title, bodyHtml, buttons) {
+  return new Promise(res => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-ov';
+    ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><div class="modal-body">${bodyHtml}</div><div class="modal-actions"></div></div>`;
+    const act = $('.modal-actions', ov);
+    buttons.forEach(b => {
+      const el = document.createElement('button');
+      el.className = 'btn ' + (b.cls || ''); el.textContent = b.label;
+      el.onclick = () => { ov.remove(); res(b.value); };
+      act.appendChild(el);
+    });
+    ov.addEventListener('keydown', e => { if (e.key === 'Escape') { ov.remove(); res(null); } });
+    document.body.appendChild(ov);
+    (act.lastChild || act).focus();
+  });
+}
+
+function download(name, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ================= Nuvem (Supabase) ================= */
+const SUPABASE_URL = 'https://zsrtrkqnpjdjsyyvflrf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_N4tQ5Q8uTTJYfLj2q5Vm_A_QbvtF3rZ';
+let sb = null, user = null, sessionStarted = false, lastLoad = 0, syncError = null;
+const isUuid = s => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s || ''));
+const hhmm = t => String(t || '').slice(0, 5);
+const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+
+// último estado confirmado no servidor (assinaturas JSON)
+const synced = { entries: new Map(), liveops: new Map(), tickets: new Map(), holidays: new Map(), perfil: '', running: '' };
+
+const entryToRow = e => ({ id: e.id, user_id: user.id, data: e.date, inicio: e.start, fim: e.end, chamado: e.ticket, descricao: e.desc || '', manual: !!e.manual, he: !!e.he, origem: ['form', 'timer', 'chat', 'import'].includes(e.origin) ? e.origin : 'form', criado_em: new Date(e.createdAt || Date.now()).toISOString() });
+const rowToEntry = r => ({ id: r.id, date: r.data, start: r.inicio, end: r.fim, ticket: r.chamado, desc: r.descricao || '', manual: r.manual, he: r.he, origin: r.origem, createdAt: Date.parse(r.criado_em) });
+const entrySig = e => JSON.stringify([e.date, e.start, e.end, e.ticket, e.desc || '', !!e.manual, !!e.he]);
+const ticketSig = k => JSON.stringify([k.ticket, k.desc || '', !!k.isDefault]);
+const holidaySig = h => JSON.stringify([h.date, h.name, h.esfera, !!h.recurring]);
+const lvSig = v => JSON.stringify([v.at, v.normal, v.extra]);
+const perfilFromConfig = c => ({
+  nome: c.nome || null, jornada_min: c.jornada, inicio_expediente: c.workStart, fim_expediente: c.workEnd,
+  inicio_intervalo: c.lunchStart, fim_intervalo: c.lunchEnd, inicio_chat: c.chatStart, ferramenta: c.consultTool || 'Liveops',
+  feriados_desativados: c.disabledHolidays, facultativos_ativos: c.facultativos,
+  lembrete_inicio_ativo: !!c.remindStartOn, lembrete_inicio_hora: c.remindStartAt || '08:30',
+  lembrete_fim_ativo: !!c.remindEndOn, lembrete_fim_hora: c.remindEndAt || '17:30'
+});
+const runningRow = r => r && ({ user_id: user.id, chamado: r.ticket, descricao: r.desc || '', data: r.date, inicio: r.start, iniciado_em: new Date(r.ts).toISOString() });
+
+function setSyncStatus(kind, text) {
+  const el = $('#syncStatus'); if (!el) return;
+  el.className = 'sync ' + kind; el.textContent = text;
+}
+function friendlyError(err) {
+  const code = err && (err.code || err.status);
+  if (code === '23P01') return 'conflito de horário com um apontamento gravado em outro dispositivo';
+  if (code === '23505') return 'registro duplicado';
+  if (code === '42501' || code === 401 || code === 403) return 'sessão expirada ou sem permissão; entre de novo';
+  if (err && /fetch|network|Failed/i.test(err.message || '')) return 'sem conexão com a internet';
+  return (err && err.message) || String(err);
+}
+
+let syncChain = Promise.resolve(), pending = 0;
+function queueSync(fn) {
+  pending++; setSyncStatus('busy', 'Salvando…');
+  const p = syncChain.then(fn).then(() => {
+    if (--pending === 0 && !syncError) setSyncStatus('ok', 'Salvo na nuvem');
+  }, err => {
+    pending--; syncError = err;
+    setSyncStatus('err', 'Erro ao salvar');
+    showSyncBanner(err);
+  });
+  syncChain = p;
+  return p;
+}
+function showSyncBanner(err) {
+  const b = $('#banner');
+  b.innerHTML = `Não consegui salvar na nuvem: ${esc(friendlyError(err))}.
+    <button class="btn sm" id="bnRetry">Tentar de novo</button>
+    <button class="btn sm" id="bnReload">Descartar e recarregar do servidor</button>`;
+  b.classList.add('show');
+  $('#bnRetry').onclick = () => { syncError = null; b.classList.remove('show'); syncAll(); };
+  $('#bnReload').onclick = async () => { syncError = null; b.classList.remove('show'); await loadAll(); renderAll(); toast('Dados recarregados do servidor'); };
+}
+const syncAll = () => { saveConfig(); saveEntries(); saveLiveops(); saveRunning(); };
+
+async function syncEntries() {
+  const cur = new Map(state.entries.map(e => [e.id, e]));
+  const del = [...synced.entries.keys()].filter(id => !cur.has(id));
+  const up = [...cur.values()].filter(e => synced.entries.get(e.id) !== entrySig(e));
+  for (const part of chunk(del, 100)) {
+    const { error } = await sb.from('apontamentos').delete().in('id', part);
+    if (error) throw error;
+    part.forEach(id => synced.entries.delete(id));
+  }
+  for (const part of chunk(up, 500)) {
+    const { error } = await sb.from('apontamentos').upsert(part.map(entryToRow));
+    if (error) throw error;
+    part.forEach(e => synced.entries.set(e.id, entrySig(e)));
+  }
+}
+async function syncLiveops() {
+  const cur = state.liveops;
+  const del = [...synced.liveops.keys()].filter(d => !cur[d]);
+  const up = Object.entries(cur).filter(([d, v]) => synced.liveops.get(d) !== lvSig(v));
+  for (const part of chunk(del, 100)) {
+    const { error } = await sb.from('lancamentos_ferramenta').delete().eq('user_id', user.id).in('data', part);
+    if (error) throw error;
+    part.forEach(d => synced.liveops.delete(d));
+  }
+  for (const part of chunk(up, 500)) {
+    const { error } = await sb.from('lancamentos_ferramenta').upsert(part.map(([d, v]) => ({ user_id: user.id, data: d, normal_min: v.normal, excedente_min: v.extra, marcado_em: new Date(v.at).toISOString() })));
+    if (error) throw error;
+    part.forEach(([d, v]) => synced.liveops.set(d, lvSig(v)));
+  }
+}
+async function syncConfig() {
+  const c = state.config;
+  const p = perfilFromConfig(c), ps = JSON.stringify(p);
+  if (ps !== synced.perfil) {
+    const { error } = await sb.from('perfis').update(p).eq('id', user.id);
+    if (error) throw error;
+    synced.perfil = ps;
+  }
+  // chamados
+  const curK = new Map(c.tickets.map(k => [k.id, k]));
+  const delK = [...synced.tickets.keys()].filter(id => !curK.has(id));
+  const upK = c.tickets.filter(k => synced.tickets.get(k.id) !== ticketSig(k));
+  if (delK.length) { const { error } = await sb.from('chamados').delete().in('id', delK); if (error) throw error; delK.forEach(id => synced.tickets.delete(id)); }
+  if (upK.length) {
+    const { error } = await sb.from('chamados').upsert(upK.map(k => ({ id: k.id, user_id: user.id, codigo: k.ticket, descricao: k.desc || null, padrao: false })));
+    if (error) throw error;
+    const def = c.tickets.find(k => k.isDefault);
+    if (def) { const r = await sb.rpc('definir_chamado_padrao', { p_chamado_id: def.id }); if (r.error) throw r.error; }
+    c.tickets.forEach(k => synced.tickets.set(k.id, ticketSig(k)));
+  }
+  // feriados personalizados
+  const curH = new Map(c.customHolidays.map(h => [h.id, h]));
+  const delH = [...synced.holidays.keys()].filter(id => !curH.has(id));
+  const upH = c.customHolidays.filter(h => synced.holidays.get(h.id) !== holidaySig(h));
+  if (delH.length) { const { error } = await sb.from('feriados_personalizados').delete().in('id', delH); if (error) throw error; delH.forEach(id => synced.holidays.delete(id)); }
+  if (upH.length) {
+    const { error } = await sb.from('feriados_personalizados').upsert(upH.map(h => ({ id: h.id, user_id: user.id, data: h.date, nome: h.name, esfera: h.esfera || 'Municipal', recorrente: !!h.recurring })));
+    if (error) throw error;
+    upH.forEach(h => synced.holidays.set(h.id, holidaySig(h)));
+  }
+}
+async function syncRunning() {
+  const row = runningRow(state.running), s = JSON.stringify(row || null);
+  if (s === synced.running) return;
+  if (row) { const { error } = await sb.from('cronometro').upsert(row); if (error) throw error; }
+  else { const { error } = await sb.from('cronometro').delete().eq('user_id', user.id); if (error) throw error; }
+  synced.running = s;
+}
+
+const saveEntries = () => queueSync(syncEntries);
+const saveConfig = () => { holidayCache.clear(); return queueSync(syncConfig); };
+const saveRunning = () => queueSync(syncRunning);
+const saveLiveops = () => queueSync(syncLiveops);
+
+async function selectAll(table, order) {
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    let q = sb.from(table).select('*');
+    if (order) q = q.order(order, { ascending: true });
+    const { data, error } = await q.range(from, from + 999);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+
+async function loadAll() {
+  setSyncStatus('busy', 'Carregando…');
+  const [perfilR, tickets, holidays, entries, lvs, runR] = await Promise.all([
+    sb.from('perfis').select('*').eq('id', user.id).maybeSingle(),
+    selectAll('chamados', 'criado_em'),
+    selectAll('feriados_personalizados', 'data'),
+    selectAll('apontamentos', 'data'),
+    selectAll('lancamentos_ferramenta', 'data'),
+    sb.from('cronometro').select('*').eq('user_id', user.id).maybeSingle()
+  ]);
+  if (perfilR.error) throw perfilR.error;
+  if (runR.error) throw runR.error;
+  const p = perfilR.data || {};
+  state.config = {
+    ...structuredCloneSafe(DEFAULT_CONFIG),
+    nome: p.nome || '', email: p.email || user.email,
+    jornada: p.jornada_min ?? 480, workStart: p.inicio_expediente ?? 480, workEnd: p.fim_expediente ?? 1020,
+    lunchStart: p.inicio_intervalo ?? 720, lunchEnd: p.fim_intervalo ?? 780, chatStart: p.inicio_chat ?? 480,
+    consultTool: p.ferramenta || 'Liveops',
+    disabledHolidays: p.feriados_desativados || [], facultativos: p.facultativos_ativos || [],
+    remindStartOn: !!p.lembrete_inicio_ativo, remindStartAt: hhmm(p.lembrete_inicio_hora) || '08:30',
+    remindEndOn: !!p.lembrete_fim_ativo, remindEndAt: hhmm(p.lembrete_fim_hora) || '17:30',
+    tickets: tickets.map(k => ({ id: k.id, ticket: k.codigo, desc: k.descricao || '', isDefault: k.padrao })),
+    customHolidays: holidays.map(h => ({ id: h.id, date: h.data, name: h.nome, esfera: h.esfera, recurring: h.recorrente }))
+  };
+  state.entries = entries.map(rowToEntry);
+  state.liveops = {};
+  for (const l of lvs) state.liveops[l.data] = { at: Date.parse(l.marcado_em), normal: l.normal_min, extra: l.excedente_min };
+  const r = runR.data;
+  state.running = r ? { ticket: r.chamado, desc: r.descricao, date: r.data, start: r.inicio, ts: Date.parse(r.iniciado_em) } : null;
+
+  synced.perfil = JSON.stringify(perfilFromConfig(state.config));
+  synced.entries = new Map(state.entries.map(e => [e.id, entrySig(e)]));
+  synced.tickets = new Map(state.config.tickets.map(k => [k.id, ticketSig(k)]));
+  synced.holidays = new Map(state.config.customHolidays.map(h => [h.id, holidaySig(h)]));
+  synced.liveops = new Map(Object.entries(state.liveops).map(([d, v]) => [d, lvSig(v)]));
+  synced.running = JSON.stringify(runningRow(state.running) || null);
+  holidayCache.clear();
+  lastLoad = Date.now();
+  setSyncStatus('ok', 'Sincronizado');
+}
+
+/* ================= Login ================= */
+function showAuth(view, msg) {
+  $('#auth').classList.add('show');
+  $$('#auth [data-view]').forEach(v => v.hidden = v.dataset.view !== view);
+  const m = $('#authMsg');
+  if (msg) showMsg(m, msg.text, msg.kind); else hideMsg(m);
+  const f = $(`#auth [data-view="${view}"] input`); if (f) f.focus();
+}
+const hideAuth = () => $('#auth').classList.remove('show');
+
+async function startSession(u) {
+  if (sessionStarted && user && user.id === u.id) return;
+  user = u; sessionStarted = true;
+  showAuth('loading');
+  try { await loadAll(); }
+  catch (err) { sessionStarted = false; showAuth('login', { text: 'Não consegui carregar seus dados: ' + friendlyError(err), kind: 'err' }); return; }
+  hideAuth();
+  $('#userEmail').textContent = state.config.nome || u.email;
+  resetForm();
+  renderAll();
+  $('#chatLog').innerHTML = '';
+  const k = defaultTicket();
+  bot(`Oi${state.config.nome ? ', ' + esc(state.config.nome.split(' ')[0]) : ''}! Eu sou o <b>Pontual</b> e estou aqui pra você não perder nenhuma hora. 😊<br>
+    É só me contar, por exemplo: <code>aponta 8h hoje</code> ou <code>2h de HE hoje</code>.${k ? `<br>Se não disser o chamado, uso o padrão <b>${esc(k)}</b>.` : ''}<br>
+    Digite <code>ajuda</code> quando quiser.`);
+  const pend = pendingLiveops(todayISO().slice(0, 8) + '01', addDays(todayISO(), -1));
+  if (pend.length) bot(`Lembrete: ${pend.length} dia(s) deste mês ainda sem marcação no ${esc(toolName())}. Digite <code>pendentes</code> para ver.`);
+}
+
+function bindAuth() {
+  $('#loginForm').onsubmit = async e => {
+    e.preventDefault();
+    const btn = $('#loginBtn'); btn.disabled = true;
+    const { data, error } = await sb.auth.signInWithPassword({ email: $('#loginEmail').value.trim(), password: $('#loginPass').value });
+    btn.disabled = false;
+    if (error) return showAuth('login', { text: /invalid/i.test(error.message) ? 'E-mail ou senha incorretos.' : friendlyError(error), kind: 'err' });
+    $('#loginPass').value = '';
+    startSession(data.user);
+  };
+  $('#forgotLink').onclick = e => { e.preventDefault(); $('#resetEmail').value = $('#loginEmail').value; showAuth('reset'); };
+  $('#backLogin').onclick = e => { e.preventDefault(); showAuth('login'); };
+  $('#resetForm').onsubmit = async e => {
+    e.preventDefault();
+    const { error } = await sb.auth.resetPasswordForEmail($('#resetEmail').value.trim(), { redirectTo: location.origin + location.pathname });
+    showAuth('reset', error ? { text: friendlyError(error), kind: 'err' } : { text: 'Se o e-mail estiver cadastrado, você vai receber um link para criar uma nova senha.', kind: 'ok' });
+  };
+  $('#newPassForm').onsubmit = async e => {
+    e.preventDefault();
+    const a = $('#newPass').value, b = $('#newPass2').value;
+    if (a.length < 8) return showAuth('newpass', { text: 'Use pelo menos 8 caracteres.', kind: 'err' });
+    if (a !== b) return showAuth('newpass', { text: 'As senhas não conferem.', kind: 'err' });
+    const { data, error } = await sb.auth.updateUser({ password: a });
+    if (error) return showAuth('newpass', { text: friendlyError(error), kind: 'err' });
+    history.replaceState(null, '', location.pathname);
+    toast('Senha alterada');
+    startSession(data.user);
+  };
+  $('#logoutBtn').onclick = async () => {
+    if (pending) await syncChain.catch(() => {});
+    await sb.auth.signOut();
+  };
+}
+
+async function initCloud() {
+  if (!window.supabase || !window.supabase.createClient) {
+    showAuth('login', { text: 'Não consegui carregar a biblioteca do Supabase. Verifique a conexão com a internet e recarregue a página.', kind: 'err' });
+    return;
+  }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  let recovering = /type=recovery/.test(location.hash);
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') { recovering = true; user = session && session.user; showAuth('newpass'); return; }
+    if (event === 'SIGNED_OUT') {
+      sessionStarted = false; user = null;
+      state.entries = []; state.liveops = {}; state.running = null;
+      showAuth('login', { text: 'Você saiu.', kind: 'ok' });
+      return;
+    }
+    if (event === 'SIGNED_IN' && session && !recovering) setTimeout(() => startSession(session.user), 0);
+  });
+  const { data } = await sb.auth.getSession();
+  if (recovering) { showAuth('newpass'); return; }
+  if (data.session) startSession(data.session.user);
+  else showAuth('login');
+  // recarrega ao voltar para a aba (outro dispositivo pode ter alterado)
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden || !sessionStarted || pending || syncError || Date.now() - lastLoad < 30000 || state.editId) return;
+    try { await loadAll(); renderAll(); } catch (e) { setSyncStatus('err', 'Sem conexão'); }
+  });
+}
+
+/* ================= Estado ================= */
+const DEFAULT_CONFIG = {
+  jornada: 480, workStart: 480, workEnd: 1020, lunchStart: 720, lunchEnd: 780, chatStart: 480,
+  disabledHolidays: [], facultativos: [], customHolidays: [],
+  tickets: [{ id: 'k476077', ticket: '476077', desc: '', isDefault: true }],
+  consultTool: 'Liveops',
+  nome: '', email: '', remindStartOn: false, remindStartAt: '08:30', remindEndOn: false, remindEndAt: '17:30'
+};
+const state = {
+  entries: [], config: structuredCloneSafe(DEFAULT_CONFIG), running: null, liveops: {},
+  selDate: todayISO(), calMonth: todayISO().slice(0, 7), editId: null,
+  hYear: new Date().getFullYear(),
+  report: { from: todayISO().slice(0, 8) + '01', to: monthEnd(todayISO().slice(0, 7)), ticket: '', group: 'dia' },
+  chatPending: null
+};
+function structuredCloneSafe(o) { return JSON.parse(JSON.stringify(o)); }
+
+const defaultTicket = () => (state.config.tickets.find(t => t.isDefault) || {}).ticket || '';
+const toolName = () => state.config.consultTool || 'Liveops';
+
+/* ================= Feriados ================= */
+function easter(y) {
+  const a = y % 19, b = Math.floor(y/100), c = y % 100, d = Math.floor(b/4), e = b % 4;
+  const f = Math.floor((b+8)/25), g = Math.floor((b-f+1)/3), h = (19*a + b - d - g + 15) % 30;
+  const i = Math.floor(c/4), k = c % 4, l = (32 + 2*e + 2*i - h - k) % 7;
+  const m = Math.floor((a + 11*h + 22*l) / 451);
+  const month = Math.floor((h + l - 7*m + 114) / 31), day = ((h + l - 7*m + 114) % 31) + 1;
+  return toISO(new Date(y, month-1, day));
+}
+const BUILTIN = [
+  { key:'f01-01', md:'01-01', name:'Confraternização Universal', esfera:'Nacional' },
+  { key:'f01-25', md:'01-25', name:'Aniversário de São Paulo', esfera:'Municipal' },
+  { key:'e-2', off:-2, name:'Sexta-feira Santa', esfera:'Nacional' },
+  { key:'f04-21', md:'04-21', name:'Tiradentes', esfera:'Nacional' },
+  { key:'f05-01', md:'05-01', name:'Dia do Trabalho', esfera:'Nacional' },
+  { key:'e60', off:60, name:'Corpus Christi', esfera:'Municipal' },
+  { key:'f07-09', md:'07-09', name:'Revolução Constitucionalista', esfera:'Estadual' },
+  { key:'f09-07', md:'09-07', name:'Independência do Brasil', esfera:'Nacional' },
+  { key:'f10-12', md:'10-12', name:'Nossa Senhora Aparecida', esfera:'Nacional' },
+  { key:'f11-02', md:'11-02', name:'Finados', esfera:'Nacional' },
+  { key:'f11-15', md:'11-15', name:'Proclamação da República', esfera:'Nacional' },
+  { key:'f11-20', md:'11-20', name:'Dia Nacional de Zumbi e da Consciência Negra', esfera:'Nacional' },
+  { key:'f12-25', md:'12-25', name:'Natal', esfera:'Nacional' }
+];
+const FACULT = [
+  { key:'e-48', off:-48, name:'Carnaval (segunda-feira)' },
+  { key:'e-47', off:-47, name:'Carnaval (terça-feira)' },
+  { key:'e-46', off:-46, name:'Quarta-feira de Cinzas' }
+];
+const builtinDate = (h, y) => h.md ? `${y}-${h.md}` : addDays(easter(y), h.off);
+
+const holidayCache = new Map();
+function holidayMap(y) {
+  if (holidayCache.has(y)) return holidayCache.get(y);
+  const map = new Map(), cfg = state.config;
+  for (const h of BUILTIN) if (!cfg.disabledHolidays.includes(h.key)) map.set(builtinDate(h, y), { name: h.name, esfera: h.esfera });
+  for (const h of FACULT) if (cfg.facultativos.includes(h.key)) map.set(builtinDate(h, y), { name: h.name, esfera: 'Ponto facultativo' });
+  for (const c of cfg.customHolidays) {
+    if (c.recurring) map.set(`${y}-${c.date.slice(5)}`, { name: c.name, esfera: c.esfera });
+    else if (+c.date.slice(0, 4) === y) map.set(c.date, { name: c.name, esfera: c.esfera });
+  }
+  holidayCache.set(y, map);
+  return map;
+}
+function dayInfo(date) {
+  const h = holidayMap(+date.slice(0, 4)).get(date);
+  if (h) return { kind: 'feriado', label: 'Feriado: ' + h.name, short: 'Feriado', name: h.name, esfera: h.esfera };
+  const dw = fromISO(date).getDay();
+  if (dw === 0 || dw === 6) return { kind: 'fds', label: 'Fim de semana', short: 'Fim de semana' };
+  return { kind: 'util', label: 'Dia útil', short: 'Dia útil' };
+}
+
+/* ================= Regras de classificação ================= */
+function classifyDay(date, entries) {
+  const info = dayInfo(date), cfg = state.config;
+  const list = entries.filter(e => e.date === date).sort((a, b) => a.start - b.start || a.end - b.end);
+  const overLabel = 'Acima de ' + hoursLabel(cfg.jornada);
+  let acc = 0;
+  const segs = [];
+  for (const e of list) {
+    const base = { entry: e, date, ticket: e.ticket, desc: e.desc || '', alerts: [] };
+    if (info.kind !== 'util') {
+      segs.push({ ...base, start: e.start, end: e.end, type: 'Excedente', reason: info.label });
+      continue;
+    }
+    if (!e.he && (e.start < cfg.workStart || e.end > cfg.workEnd)) base.alerts.push('Fora do horário de trabalho');
+    if (e.manual || e.he) {
+      segs.push({ ...base, start: e.start, end: e.end, type: 'Excedente', reason: e.he ? 'Hora extra (HE)' : 'Manual' });
+      continue;
+    }
+    const dur = e.end - e.start, rem = Math.max(0, cfg.jornada - acc);
+    if (dur <= rem) {
+      segs.push({ ...base, start: e.start, end: e.end, type: 'Normal', reason: '' });
+    } else if (rem > 0) {
+      segs.push({ ...base, start: e.start, end: e.start + rem, type: 'Normal', reason: '', splitFirst: true });
+      segs.push({ ...base, start: e.start + rem, end: e.end, type: 'Excedente', reason: overLabel, splitCont: true });
+    } else {
+      segs.push({ ...base, start: e.start, end: e.end, type: 'Excedente', reason: overLabel });
+    }
+    acc += dur;
+  }
+  let normal = 0, extra = 0;
+  for (const s of segs) { const d = s.end - s.start; if (s.type === 'Normal') normal += d; else extra += d; }
+  return { info, segs, normal, extra, total: normal + extra, countedNormal: acc };
+}
+
+function conflictsFor(part, excludeIds, pool = state.entries) {
+  return pool.filter(e => !excludeIds.includes(e.id) && e.date === part.date && part.start < e.end && e.start < part.end);
+}
+
+// Divide um intervalo que passa da meia-noite. overnight => end é no dia seguinte.
+function buildParts(date, start, end, overnight) {
+  if (!overnight) return [{ date, start, end }];
+  return [{ date, start, end: 1440 }, { date: addDays(date, 1), start: 0, end }].filter(p => p.end > p.start);
+}
+
+function validateParts(parts, ticket, excludeIds = []) {
+  if (!String(ticket || '').trim()) return 'Informe o chamado.';
+  if (!parts.length) return 'Intervalo sem duração.';
+  for (const p of parts) {
+    if (p.end <= p.start) return 'O fim deve ser maior que o início.';
+    const c = conflictsFor(p, excludeIds);
+    if (c.length) {
+      const x = c[0];
+      return `Conflito com ${x.ticket} das ${fmtMin(x.start)} às ${fmtMin(x.end)} em ${fmtDate(x.date)}.`;
+    }
+  }
+  return null;
+}
+
+function addParts(parts, meta, keepId) {
+  const now = Date.now();
+  const created = parts.map((p, i) => ({
+    id: (i === 0 && keepId) ? keepId : uid(),
+    date: p.date, start: p.start, end: p.end,
+    ticket: meta.ticket.trim().toUpperCase(), desc: (meta.desc || '').trim().slice(0, 200),
+    manual: !!meta.manual, he: !!meta.he, origin: meta.origin || 'form', createdAt: now + i
+  }));
+  state.entries.push(...created);
+  return created;
+}
+
+/* ================= Renderização: Dia ================= */
+function renderDay() {
+  const date = state.selDate;
+  $('#dDate').value = date;
+  $('#dLabel').textContent = dowName(date);
+  const c = classifyDay(date, state.entries);
+  const kind = $('#dKind');
+  kind.className = 'badge ' + c.info.kind; kind.textContent = c.info.label;
+
+  const falta = c.info.kind === 'util' ? Math.max(0, state.config.jornada - c.countedNormal) : null;
+  $('#dKpis').innerHTML = `
+    <div class="kpi normal"><div class="lbl">Normal</div><div class="val">${fmtDur(c.normal)}</div><div class="sub">${fmtDec(c.normal)} h</div></div>
+    <div class="kpi extra"><div class="lbl">Excedente</div><div class="val">${fmtDur(c.extra)}</div><div class="sub">${fmtDec(c.extra)} h</div></div>
+    <div class="kpi"><div class="lbl">Total</div><div class="val">${fmtDur(c.total)}</div><div class="sub">${fmtDec(c.total)} h</div></div>
+    <div class="kpi"><div class="lbl">Falta para ${hoursLabel(state.config.jornada)}</div><div class="val">${falta === null ? '—' : fmtDur(falta)}</div><div class="sub">${falta === null ? 'Tudo conta como excedente' : fmtDec(falta) + ' h'}</div></div>`;
+
+  const lv = lvStatus(date, c), bar = $('#lvBar'), chk = $('#lvCheck');
+  $('#lvLabel').textContent = `Horas deste dia apontadas no ${toolName()}`;
+  chk.checked = lv.done;
+  chk.disabled = !lv.done && !c.segs.length;
+  bar.className = 'lv-bar' + (lv.done ? (lv.changed ? ' pend' : ' done') : (c.segs.length && date <= todayISO() ? ' pend' : ''));
+  $('#lvInfo').textContent = lv.done
+    ? (lv.changed
+        ? `Atenção: os apontamentos mudaram depois da marcação (marcado com ${fmtDur(lv.normal)} normais e ${fmtDur(lv.extra)} excedentes). Confira no ${toolName()}.`
+        : `Marcado em ${new Date(lv.at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`)
+    : (c.segs.length ? `Pendente: ${fmtDur(c.normal)} normais e ${fmtDur(c.extra)} excedentes para lançar` : 'Sem horas neste dia');
+
+  if (!c.segs.length) {
+    $('#dTable').innerHTML = `<div class="empty">Nenhum apontamento neste dia.</div>`;
+  } else {
+    let html = `<table><thead><tr><th>Início</th><th>Fim</th><th class="num">Duração</th><th>Chamado</th><th>Tipo</th><th>Motivo</th><th>Descrição</th><th></th></tr></thead><tbody>`;
+    for (const s of c.segs) {
+      const d = s.end - s.start;
+      const alert = s.alerts.length && !s.splitCont ? ` <span class="badge warn" title="${esc(s.alerts.join(', '))}">⚠ ${esc(s.alerts[0])}</span>` : '';
+      html += `<tr class="${s.splitCont ? 'split' : ''}">
+        <td class="num">${fmtMin(s.start)}</td><td class="num">${fmtMin(s.end)}</td>
+        <td class="num">${fmtDur(d)}</td>
+        <td>${s.splitCont ? '<span class="cont">↳ mesmo apontamento</span>' : esc(s.ticket)}</td>
+        <td><span class="badge ${s.type === 'Normal' ? 'normal' : 'extra'}">${s.type}</span></td>
+        <td>${esc(s.reason)}${s.entry.manual ? ' ✎' : ''}${alert}</td>
+        <td>${s.splitCont ? '' : esc(s.desc)}</td>
+        <td class="actions">${s.splitCont ? '' : `<button class="btn sm" data-edit="${s.entry.id}">Editar</button> <button class="btn sm danger" data-del="${s.entry.id}">Excluir</button>`}</td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+    $('#dTable').innerHTML = html;
+  }
+  if (!state.editId) $('#fDate').value = date;
+}
+
+function lvStatus(date, c) {
+  const f = state.liveops[date];
+  if (!f) return { done: false };
+  c = c || classifyDay(date, state.entries);
+  return { done: true, at: f.at, normal: f.normal, extra: f.extra, changed: f.normal !== c.normal || f.extra !== c.extra };
+}
+async function setLiveops(date, on) {
+  if (on) {
+    const c = classifyDay(date, state.entries);
+    state.liveops[date] = { at: Date.now(), normal: c.normal, extra: c.extra };
+  } else delete state.liveops[date];
+  await saveLiveops();
+  renderAll();
+}
+function pendingLiveops(from, to) {
+  const dates = [...new Set(state.entries.filter(e => e.date >= from && e.date <= to).map(e => e.date))].sort();
+  return dates.map(d => ({ date: d, c: classifyDay(d, state.entries), lv: lvStatus(d) })).filter(x => !x.lv.done || x.lv.changed);
+}
+
+function renderCalendar() {
+  const [y, m] = state.calMonth.split('-').map(Number);
+  $('#legendTool').textContent = 'Lançado no ' + toolName();
+  $('#calLabel').textContent = `${MONTHS[m-1]} ${y}`;
+  const first = `${state.calMonth}-01`;
+  let cur = mondayOf(first);
+  const last = monthEnd(state.calMonth);
+  const today = todayISO();
+  let html = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(d => `<div class="dow">${d}</div>`).join('');
+  const datesWithEntries = new Set(state.entries.map(e => e.date));
+  for (let i = 0; i < 42; i++) {
+    if (i >= 35 && cur > last) break;
+    const info = dayInfo(cur);
+    const cls = ['d'];
+    if (cur.slice(0, 7) !== state.calMonth) cls.push('out');
+    if (info.kind !== 'util') cls.push(info.kind);
+    if (cur === today) cls.push('today');
+    if (cur === state.selDate) cls.push('sel');
+    let hrs = '', lvCls = '', lvTxt = '';
+    if (datesWithEntries.has(cur)) {
+      const c = classifyDay(cur, state.entries);
+      hrs = fmtDur(c.total);
+      if (c.extra > 0) cls.push('has-extra');
+      const lv = lvStatus(cur, c);
+      if (lv.done && !lv.changed) { lvCls = ' lv'; lvTxt = ` — lançado no ${toolName()}`; }
+      else lvTxt = lv.changed ? ` — alterado depois de lançar no ${toolName()}` : ` — pendente no ${toolName()}`;
+    }
+    const title = `${fmtDate(cur)} — ${info.label}${lvTxt}`;
+    html += `<button class="${cls.join(' ')}" data-date="${cur}" title="${esc(title)}"><span class="n">${+cur.slice(8)}</span><span class="h${lvCls}">${hrs || '&nbsp;'}</span></button>`;
+    cur = addDays(cur, 1);
+  }
+  $('#cal').innerHTML = html;
+  const hs = [...holidayMap(y).entries()].filter(([d]) => d.slice(0, 7) === state.calMonth).sort();
+  $('#calHolidays').innerHTML = hs.length
+    ? hs.map(([d, h]) => `<div><strong>${d.slice(8)}/${d.slice(5, 7)}</strong> ${esc(h.name)}</div>`).join('')
+    : 'Sem feriados neste mês.';
+}
+
+function renderTicketList() {
+  const tickets = [...new Set(state.config.tickets.map(t => t.ticket).concat(state.entries.map(e => e.ticket)))].sort();
+  $('#ticketList').innerHTML = tickets.map(t => `<option value="${esc(t)}">`).join('');
+}
+
+/* ================= Formulário ================= */
+function resetForm() {
+  state.editId = null;
+  $('#formTitle').textContent = 'Novo apontamento';
+  $('#fCancel').hidden = true;
+  $('#fStart').value = ''; $('#fEnd').value = '';
+  $('#fTicket').value = defaultTicket(); $('#fDesc').value = ''; $('#fManual').checked = false;
+  $('#fDate').value = state.selDate;
+}
+function editEntry(id) {
+  const e = state.entries.find(x => x.id === id); if (!e) return;
+  state.editId = id;
+  $('#formTitle').textContent = 'Editar apontamento';
+  $('#fCancel').hidden = false;
+  $('#fDate').value = e.date; $('#fStart').value = fmtMin(e.start); $('#fEnd').value = fmtMin(e.end);
+  $('#fTicket').value = e.ticket; $('#fDesc').value = e.desc || ''; $('#fManual').checked = !!e.manual;
+  hideMsg($('#fMsg'));
+  $('#entryForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+async function deleteEntry(id) {
+  const e = state.entries.find(x => x.id === id); if (!e) return;
+  const ok = await modal('Excluir apontamento', `${esc(e.ticket)} — ${fmtDate(e.date)} das ${fmtMin(e.start)} às ${fmtMin(e.end)}. O dia será recalculado.`,
+    [{ label: 'Cancelar', value: false }, { label: 'Excluir', value: true, cls: 'stop' }]);
+  if (!ok) return;
+  state.entries = state.entries.filter(x => x.id !== id);
+  if (state.editId === id) resetForm();
+  await saveEntries(); renderAll(); toast('Apontamento excluído');
+}
+
+async function submitForm(ev) {
+  ev.preventDefault();
+  const msg = $('#fMsg'); hideMsg(msg);
+  const date = $('#fDate').value, start = parseHM($('#fStart').value), end = parseHM($('#fEnd').value);
+  const ticket = $('#fTicket').value.trim();
+  if (!date) return showMsg(msg, 'Informe a data.', 'err');
+  if (start === null || end === null) return showMsg(msg, 'Informe início e fim no formato HH:mm.', 'err');
+  if (!ticket) return showMsg(msg, 'Informe o chamado.', 'err');
+  if (end === start) return showMsg(msg, 'O fim deve ser maior que o início.', 'err');
+  let overnight = false;
+  if (end < start) {
+    const ok = await modal('Fim menor que o início',
+      `A atividade começou às ${fmtMin(start)} e terminou às ${fmtMin(end)} do dia seguinte?<br>Se sim, serão gravados dois apontamentos, um em cada data.`,
+      [{ label: 'Não, corrigir', value: false }, { label: 'Sim, passou da meia-noite', value: true, cls: 'primary' }]);
+    if (!ok) return showMsg(msg, 'O fim deve ser maior que o início.', 'err');
+    overnight = true;
+  }
+  const parts = buildParts(date, start, end, overnight);
+  const excl = state.editId ? [state.editId] : [];
+  const err = validateParts(parts, ticket, excl);
+  if (err) return showMsg(msg, err, 'err');
+  const keep = state.editId;
+  const orig = keep ? state.entries.find(x => x.id === keep) : null;
+  if (keep) state.entries = state.entries.filter(x => x.id !== keep);
+  addParts(parts, { ticket, desc: $('#fDesc').value, manual: $('#fManual').checked, he: !!(orig && orig.he), origin: orig ? orig.origin : 'form' }, keep);
+  await saveEntries();
+  state.selDate = date; state.calMonth = date.slice(0, 7);
+  resetForm();
+  renderAll();
+  showMsg(msg, parts.length > 1 ? 'Salvo em dois apontamentos (passou da meia-noite).' : 'Apontamento salvo.', 'ok');
+}
+
+async function launchJornada() {
+  const msg = $('#fMsg'); hideMsg(msg);
+  const ticket = $('#fTicket').value.trim();
+  const date = $('#fDate').value || state.selDate;
+  if (!ticket) return showMsg(msg, 'Informe o chamado para lançar a jornada padrão.', 'err');
+  const c = state.config;
+  const parts = [{ date, start: c.workStart, end: c.lunchStart }, { date, start: c.lunchEnd, end: c.workEnd }].filter(p => p.end > p.start);
+  const err = validateParts(parts, ticket);
+  if (err) return showMsg(msg, err, 'err');
+  addParts(parts, { ticket, desc: $('#fDesc').value, manual: false, origin: 'form' });
+  await saveEntries();
+  state.selDate = date; state.calMonth = date.slice(0, 7);
+  resetForm(); renderAll();
+  showMsg(msg, `Jornada lançada: ${parts.map(p => fmtMin(p.start) + '–' + fmtMin(p.end)).join(' e ')}.`, 'ok');
+}
+
+/* ================= Cronômetro ================= */
+const nowMin = () => { const d = new Date(); return d.getHours()*60 + d.getMinutes(); };
+function renderTimer() {
+  const r = state.running, btn = $('#tBtn'), clock = $('#tClock');
+  if (r) {
+    btn.textContent = 'Parar'; btn.className = 'btn stop';
+    $('#tTicket').value = r.ticket; $('#tTicket').disabled = true;
+    $('#tDesc').value = r.desc || ''; $('#tDesc').disabled = true;
+    const s = Math.max(0, Math.floor((Date.now() - r.ts) / 1000));
+    clock.textContent = `${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;
+    clock.classList.add('running');
+    $('#runningInfo').textContent = `Em andamento: ${r.ticket} desde ${fmtMin(r.start)} de ${fmtDate(r.date)}`;
+  } else {
+    btn.textContent = 'Iniciar'; btn.className = 'btn primary';
+    $('#tTicket').disabled = false; $('#tDesc').disabled = false;
+    $('#tTicket').placeholder = defaultTicket() ? `${defaultTicket()} (padrão)` : 'Chamado';
+    clock.textContent = '00:00:00'; clock.classList.remove('running');
+    $('#runningInfo').textContent = 'Nenhum apontamento em andamento';
+  }
+}
+async function toggleTimer() {
+  if (!state.running) {
+    const ticket = $('#tTicket').value.trim() || defaultTicket();
+    if (!ticket) { toast('Informe o chamado para iniciar'); $('#tTicket').focus(); return; }
+    const date = todayISO(), start = nowMin();
+    const c = state.entries.find(e => e.date === date && e.start <= start && start < e.end);
+    if (c) { toast(`Já existe apontamento neste horário (${c.ticket} ${fmtMin(c.start)}–${fmtMin(c.end)})`); return; }
+    const d = new Date(); d.setSeconds(0, 0);
+    state.running = { ticket: ticket.toUpperCase(), desc: $('#tDesc').value.trim(), date, start, ts: d.getTime() };
+    await saveRunning(); renderTimer(); toast('Cronômetro iniciado');
+    return;
+  }
+  const r = state.running;
+  const endDate = todayISO(), endMin = nowMin();
+  const parts = [];
+  let d = r.date, s = r.start;
+  while (d < endDate) { parts.push({ date: d, start: s, end: 1440 }); d = addDays(d, 1); s = 0; }
+  parts.push({ date: endDate, start: s, end: endMin });
+  const valid = parts.filter(p => p.end > p.start);
+  state.running = null; await saveRunning();
+  $('#tTicket').value = ''; $('#tDesc').value = '';
+  if (!valid.length) { renderTimer(); toast('Menos de 1 minuto — nada foi gravado'); return; }
+  const err = validateParts(valid, r.ticket);
+  if (err) {
+    renderTimer();
+    state.selDate = valid[0].date; state.calMonth = valid[0].date.slice(0, 7);
+    resetForm();
+    $('#fDate').value = valid[0].date; $('#fStart').value = fmtMin(valid[0].start); $('#fEnd').value = fmtMin(valid[valid.length-1].end);
+    $('#fTicket').value = r.ticket; $('#fDesc').value = r.desc || '';
+    switchTab('dia'); renderAll();
+    showMsg($('#fMsg'), 'Não foi possível gravar: ' + err + ' Ajuste os horários e salve.', 'err');
+    return;
+  }
+  addParts(valid, { ticket: r.ticket, desc: r.desc, origin: 'timer' });
+  await saveEntries();
+  state.selDate = endDate; state.calMonth = endDate.slice(0, 7);
+  renderAll();
+  toast(`Gravado: ${r.ticket} ${fmtMin(valid[0].start)}–${fmtMin(valid[valid.length-1].end)}`);
+}
+
+/* ================= Relatórios ================= */
+function segsInRange(from, to, ticketFilter) {
+  const tf = norm(ticketFilter || '').trim();
+  const dates = [...new Set(state.entries.filter(e => e.date >= from && e.date <= to).map(e => e.date))].sort();
+  const out = [];
+  for (const d of dates) for (const s of classifyDay(d, state.entries).segs) {
+    if (tf && !norm(s.ticket).includes(tf)) continue;
+    out.push(s);
+  }
+  return out;
+}
+function groupSegs(segs, keyFn, labelFn) {
+  const m = new Map();
+  for (const s of segs) {
+    const k = keyFn(s);
+    const g = m.get(k) || { key: k, label: labelFn(s), normal: 0, extra: 0 };
+    const d = s.end - s.start;
+    if (s.type === 'Normal') g.normal += d; else g.extra += d;
+    m.set(k, g);
+  }
+  return [...m.values()].sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+}
+const totalsOf = segs => segs.reduce((t, s) => { const d = s.end - s.start; if (s.type === 'Normal') t.normal += d; else t.extra += d; return t; }, { normal: 0, extra: 0 });
+const cellDur = m => `${fmtDur(m)} <span class="muted small">(${fmtDec(m)})</span>`;
+
+function renderReport() {
+  const r = state.report;
+  $('#rFrom').value = r.from; $('#rTo').value = r.to; $('#rTicket').value = r.ticket; $('#rGroup').value = r.group;
+  if (!r.from || !r.to || r.from > r.to) { $('#rTable').innerHTML = '<div class="empty">Período inválido.</div>'; $('#rKpis').innerHTML = ''; return; }
+  const segs = segsInRange(r.from, r.to, r.ticket);
+  const t = totalsOf(segs);
+  $('#rKpis').innerHTML = `
+    <div class="kpi normal"><div class="lbl">Normal</div><div class="val">${fmtDur(t.normal)}</div><div class="sub">${fmtDec(t.normal)} h</div></div>
+    <div class="kpi extra"><div class="lbl">Excedente</div><div class="val">${fmtDur(t.extra)}</div><div class="sub">${fmtDec(t.extra)} h</div></div>
+    <div class="kpi"><div class="lbl">Total</div><div class="val">${fmtDur(t.normal + t.extra)}</div><div class="sub">${fmtDec(t.normal + t.extra)} h</div></div>
+    <div class="kpi"><div class="lbl">Pendentes no ${esc(toolName())}</div><div class="val">${pendingLiveops(r.from, r.to).length}</div><div class="sub">de ${new Set(segs.map(s => s.date)).size} dia(s) com horas</div></div>`;
+  if (!segs.length) { $('#rTable').innerHTML = '<div class="empty">Nenhum apontamento no período.</div>'; return; }
+
+  if (r.group === 'detalhe') {
+    let html = `<table><thead><tr><th>Data</th><th>Dia</th><th>Início</th><th>Fim</th><th class="num">Duração</th><th>Chamado</th><th>Tipo</th><th>Motivo</th><th>Descrição</th></tr></thead><tbody>`;
+    for (const s of segs) html += `<tr><td class="num">${fmtDate(s.date)}</td><td>${DOW_SHORT[fromISO(s.date).getDay()]}</td><td class="num">${fmtMin(s.start)}</td><td class="num">${fmtMin(s.end)}</td><td class="num">${fmtDur(s.end - s.start)}</td><td>${esc(s.ticket)}</td><td><span class="badge ${s.type === 'Normal' ? 'normal' : 'extra'}">${s.type}</span></td><td>${esc(s.reason)}</td><td>${esc(s.desc)}</td></tr>`;
+    html += `<tr class="total"><td colspan="4">Total</td><td class="num">${fmtDur(t.normal + t.extra)}</td><td colspan="4"></td></tr></tbody></table>`;
+    $('#rTable').innerHTML = html; return;
+  }
+  let groups, head;
+  if (r.group === 'dia') {
+    head = 'Dia';
+    groups = groupSegs(segs, s => s.date, s => { const i = dayInfo(s.date); return `${fmtDate(s.date)} · ${DOW_SHORT[fromISO(s.date).getDay()]}${i.kind !== 'util' ? ` <span class="badge ${i.kind}">${esc(i.short)}</span>` : ''}`; });
+  } else if (r.group === 'chamado') {
+    head = 'Chamado';
+    groups = groupSegs(segs, s => s.ticket, s => esc(s.ticket));
+  } else if (r.group === 'semana') {
+    head = 'Semana';
+    groups = groupSegs(segs, s => mondayOf(s.date), s => { const mo = mondayOf(s.date); return `${fmtDate(mo).slice(0, 5)} a ${fmtDate(addDays(mo, 6))}`; });
+  } else {
+    head = 'Mês';
+    groups = groupSegs(segs, s => s.date.slice(0, 7), s => { const [y, m] = s.date.split('-'); return `${MONTHS[+m-1]}/${y}`; });
+  }
+  const isDay = r.group === 'dia';
+  const lvCell = date => { const lv = lvStatus(date); return lv.done ? (lv.changed ? '<span class="badge warn">Alterado</span>' : '<span class="badge normal">Lançado</span>') : '<span class="badge extra">Pendente</span>'; };
+  let html = `<table><thead><tr><th>${head}</th><th class="num">Normal</th><th class="num">Excedente</th><th class="num">Total</th>${isDay ? `<th>${esc(toolName())}</th>` : ''}</tr></thead><tbody>`;
+  for (const g of groups) html += `<tr><td>${g.label}</td><td class="num">${cellDur(g.normal)}</td><td class="num">${cellDur(g.extra)}</td><td class="num">${cellDur(g.normal + g.extra)}</td>${isDay ? `<td>${lvCell(g.key)}</td>` : ''}</tr>`;
+  html += `<tr class="total"><td>Total</td><td class="num">${cellDur(t.normal)}</td><td class="num">${cellDur(t.extra)}</td><td class="num">${cellDur(t.normal + t.extra)}</td>${isDay ? '<td></td>' : ''}</tr></tbody></table>`;
+  $('#rTable').innerHTML = html;
+}
+function quickRange(q) {
+  const t = todayISO(), r = state.report;
+  if (q === 'hoje') { r.from = r.to = t; }
+  else if (q === 'semana') { r.from = mondayOf(t); r.to = addDays(r.from, 6); }
+  else if (q === 'semanaant') { r.from = addDays(mondayOf(t), -7); r.to = addDays(r.from, 6); }
+  else if (q === 'mes') { r.from = t.slice(0, 8) + '01'; r.to = monthEnd(t.slice(0, 7)); }
+  else if (q === 'mesant') { const d = fromISO(t.slice(0, 8) + '01'); d.setMonth(d.getMonth() - 1); const ym = toISO(d).slice(0, 7); r.from = ym + '-01'; r.to = monthEnd(ym); }
+  else if (q === 'ano') { r.from = t.slice(0, 4) + '-01-01'; r.to = t.slice(0, 4) + '-12-31'; }
+  renderReport();
+}
+function exportCsv() {
+  const r = state.report;
+  const segs = segsInRange(r.from, r.to, r.ticket);
+  if (!segs.length) { toast('Nada para exportar no período'); return; }
+  const cell = v => { v = String(v ?? ''); return /[;"\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+  const lines = [['Data','Dia da semana','Início','Fim','Duração','Chamado','Tipo','Motivo','Descrição','Lançado no ' + toolName()].map(cell).join(';')];
+  for (const s of segs) { const lv = lvStatus(s.date); lines.push([fmtDate(s.date), dowName(s.date), fmtMin(s.start), fmtMin(s.end), fmtDur(s.end - s.start), s.ticket, s.type, s.reason, s.desc, lv.done ? (lv.changed ? 'Alterado depois' : 'Sim') : 'Não'].map(cell).join(';')); }
+  download(`apontamentos_${r.from}_a_${r.to}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+}
+
+/* ================= Feriados (tela) ================= */
+function renderHolidays() {
+  const y = state.hYear, cfg = state.config;
+  $('#hYear').textContent = y;
+  const rows = BUILTIN.map(h => ({ h, date: builtinDate(h, y) })).sort((a, b) => a.date < b.date ? -1 : 1);
+  $('#hTable').innerHTML = `<table><thead><tr><th>Data</th><th>Dia</th><th>Feriado</th><th>Esfera</th><th>Ativo</th></tr></thead><tbody>${
+    rows.map(({ h, date }) => `<tr><td class="num">${fmtDate(date)}</td><td>${DOW_SHORT[fromISO(date).getDay()]}</td><td>${esc(h.name)}${h.off !== undefined ? ' <span class="muted small">(móvel)</span>' : ''}</td><td>${h.esfera}</td><td><input type="checkbox" data-hkey="${h.key}" ${cfg.disabledHolidays.includes(h.key) ? '' : 'checked'} aria-label="Ativar ${esc(h.name)}"></td></tr>`).join('')
+  }</tbody></table>`;
+  $('#hFacult').innerHTML = `<table><thead><tr><th>Data</th><th>Dia</th><th>Ponto facultativo</th><th>Tratar como feriado</th></tr></thead><tbody>${
+    FACULT.map(h => { const date = builtinDate(h, y); return `<tr><td class="num">${fmtDate(date)}</td><td>${DOW_SHORT[fromISO(date).getDay()]}</td><td>${esc(h.name)}</td><td><input type="checkbox" data-fkey="${h.key}" ${cfg.facultativos.includes(h.key) ? 'checked' : ''} aria-label="Tratar ${esc(h.name)} como feriado"></td></tr>`; }).join('')
+  }</tbody></table>`;
+  const cust = cfg.customHolidays.slice().sort((a, b) => (a.recurring ? a.date.slice(5) : a.date) < (b.recurring ? b.date.slice(5) : b.date) ? -1 : 1);
+  $('#hCustom').innerHTML = cust.length ? `<table><thead><tr><th>Data</th><th>Nome</th><th>Esfera</th><th>Repete</th><th></th></tr></thead><tbody>${
+    cust.map(c => `<tr><td class="num">${c.recurring ? fmtDate(c.date).slice(0, 5) : fmtDate(c.date)}</td><td>${esc(c.name)}</td><td>${esc(c.esfera)}</td><td>${c.recurring ? 'Todo ano' : 'Não'}</td><td class="actions"><button class="btn sm danger" data-hdel="${c.id}">Remover</button></td></tr>`).join('')
+  }</tbody></table>` : '<div class="empty">Nenhum feriado personalizado.</div>';
+}
+
+/* ================= Configurações e backup ================= */
+function renderConfig() {
+  const c = state.config;
+  $('#cJornada').value = c.jornada / 60;
+  $('#cWorkStart').value = fmtMin(c.workStart); $('#cWorkEnd').value = fmtMin(c.workEnd);
+  $('#cLunchStart').value = fmtMin(c.lunchStart); $('#cLunchEnd').value = fmtMin(c.lunchEnd);
+  $('#cChatStart').value = fmtMin(c.chatStart);
+  $('#lvTool').value = toolName();
+  $('#kTable').innerHTML = c.tickets.length
+    ? `<table><thead><tr><th>Padrão</th><th>Chamado</th><th>Descrição</th><th></th></tr></thead><tbody>${
+        c.tickets.map(t => `<tr><td><input type="radio" name="kDef" data-kdef="${t.id}" ${t.isDefault ? 'checked' : ''} aria-label="Tornar ${esc(t.ticket)} padrão"></td><td><strong>${esc(t.ticket)}</strong>${t.isDefault ? ' <span class="badge normal">padrão</span>' : ''}</td><td>${esc(t.desc)}</td><td class="actions"><button class="btn sm danger" data-kdel="${t.id}">Remover</button></td></tr>`).join('')
+      }</tbody></table>`
+    : '<div class="empty">Nenhum chamado cadastrado. Sem chamado padrão, o chat vai perguntar o chamado a cada apontamento.</div>';
+  $('#bInfo').textContent = `${state.entries.length} apontamento(s) salvos na nuvem (Supabase), na conta ${c.email || (user && user.email) || ''}.`;
+  $('#pNome').value = c.nome || ''; $('#pEmail').value = c.email || (user && user.email) || '';
+  $('#pStartOn').checked = !!c.remindStartOn; $('#pStartAt').value = c.remindStartAt || '08:30';
+  $('#pEndOn').checked = !!c.remindEndOn; $('#pEndAt').value = c.remindEndAt || '17:30';
+}
+async function saveConfigForm(ev) {
+  ev.preventDefault();
+  const msg = $('#cMsg');
+  const j = parseFloat(String($('#cJornada').value).replace(',', '.'));
+  const vals = ['#cWorkStart', '#cWorkEnd', '#cLunchStart', '#cLunchEnd', '#cChatStart'].map(s => parseHM($(s).value));
+  if (!(j > 0 && j <= 24) || vals.some(v => v === null)) return showMsg(msg, 'Verifique os valores informados.', 'err');
+  const [ws, we, ls, le, cs] = vals;
+  if (!(ws < ls && ls <= le && le < we)) return showMsg(msg, 'Os horários devem seguir a ordem: início ≤ intervalo ≤ fim do expediente.', 'err');
+  Object.assign(state.config, { jornada: Math.round(j * 60), workStart: ws, workEnd: we, lunchStart: ls, lunchEnd: le, chatStart: cs });
+  await saveConfig(); renderAll(); showMsg(msg, 'Configurações salvas. Os dias foram recalculados.', 'ok');
+}
+function exportBackup() {
+  const data = { app: 'apontamento-horas', version: 2, exportedAt: new Date().toISOString(), entries: state.entries, config: state.config, liveops: state.liveops };
+  const stamp = new Date();
+  download(`backup-apontamentos_${toISO(stamp)}_${pad(stamp.getHours())}${pad(stamp.getMinutes())}.json`, JSON.stringify(data, null, 2), 'application/json');
+}
+function validEntry(e) {
+  return e && typeof e === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && Number.isFinite(e.start) && Number.isFinite(e.end)
+    && e.start >= 0 && e.end <= 1440 && e.end > e.start && typeof e.ticket === 'string' && e.ticket.trim();
+}
+async function importBackup(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (e) { return modal('Arquivo inválido', 'Não foi possível ler o JSON.', [{ label: 'OK', value: 1, cls: 'primary' }]); }
+  if (!data || !Array.isArray(data.entries)) return modal('Arquivo inválido', 'Este arquivo não é um backup do Apontamento de Horas.', [{ label: 'OK', value: 1, cls: 'primary' }]);
+  const incoming = data.entries.filter(validEntry).map(e => ({ ...e, id: isUuid(e.id) ? e.id : uid(), desc: e.desc || '', manual: !!e.manual, he: !!e.he, origin: 'import', createdAt: e.createdAt || Date.now(), ticket: e.ticket.trim().toUpperCase() }));
+  if (data.config) {
+    data.config.tickets = (data.config.tickets || []).map(k => ({ ...k, id: isUuid(k.id) ? k.id : uid() }));
+    data.config.customHolidays = (data.config.customHolidays || []).map(h => ({ ...h, id: isUuid(h.id) ? h.id : uid() }));
+  }
+  const choice = await modal('Importar backup',
+    `O arquivo tem <strong>${incoming.length}</strong> apontamento(s)${data.exportedAt ? `, exportado em ${esc(new Date(data.exportedAt).toLocaleString('pt-BR'))}` : ''}.<br>Hoje existem <strong>${state.entries.length}</strong> na sua conta.`,
+    [{ label: 'Cancelar', value: null }, { label: 'Substituir tudo', value: 'replace', cls: 'danger' }, { label: 'Juntar', value: 'merge', cls: 'primary' }]);
+  if (!choice) return;
+  if (choice === 'replace') {
+    state.entries = incoming;
+    if (data.config) {
+      const keep = { nome: state.config.nome, email: state.config.email, remindStartOn: state.config.remindStartOn, remindStartAt: state.config.remindStartAt, remindEndOn: state.config.remindEndOn, remindEndAt: state.config.remindEndAt };
+      state.config = { ...structuredCloneSafe(DEFAULT_CONFIG), ...data.config, ...keep };
+      if (!Array.isArray(data.config.tickets)) state.config.tickets = [];
+    }
+    state.liveops = (data.liveops && typeof data.liveops === 'object') ? data.liveops : {};
+    await saveConfig(); await saveEntries(); await saveLiveops(); renderAll();
+    toast(`${incoming.length} apontamento(s) importados`);
+    return;
+  }
+  let added = 0, dup = 0, conf = 0;
+  const sig = e => `${e.date}|${e.start}|${e.end}|${e.ticket}`;
+  for (const e of incoming) {
+    const ids = new Set(state.entries.map(x => x.id)), sigs = new Set(state.entries.map(sig));
+    if (ids.has(e.id) || sigs.has(sig(e))) { dup++; continue; }
+    if (conflictsFor(e, []).length) { conf++; continue; }
+    state.entries.push(e); added++;
+  }
+  if (data.config && Array.isArray(data.config.customHolidays)) {
+    const have = new Set(state.config.customHolidays.map(c => `${c.date}|${c.name}`));
+    for (const c of data.config.customHolidays) if (!have.has(`${c.date}|${c.name}`)) state.config.customHolidays.push({ ...c, id: c.id || uid() });
+    const haveK = new Set(state.config.tickets.map(k => k.ticket));
+    for (const k of data.config.tickets || []) if (!haveK.has(k.ticket)) state.config.tickets.push({ ...k, isDefault: !state.config.tickets.some(x => x.isDefault) && k.isDefault });
+    await saveConfig();
+  }
+  if (data.liveops && typeof data.liveops === 'object') {
+    for (const [d, v] of Object.entries(data.liveops)) if (!state.liveops[d]) state.liveops[d] = v;
+    await saveLiveops();
+  }
+  await saveEntries(); renderAll();
+  await modal('Importação concluída', `Incluídos: <strong>${added}</strong><br>Duplicados ignorados: <strong>${dup}</strong><br>Ignorados por conflito de horário: <strong>${conf}</strong>`, [{ label: 'OK', value: 1, cls: 'primary' }]);
+}
+async function clearAll() {
+  const ok = await modal('Apagar todos os dados', 'Todos os apontamentos e marcações da sua conta na nuvem serão apagados. Exporte um backup antes, se precisar.',
+    [{ label: 'Cancelar', value: false }, { label: 'Apagar tudo', value: true, cls: 'stop' }]);
+  if (!ok) return;
+  state.entries = []; state.running = null; state.liveops = {};
+  await saveEntries(); await saveRunning(); await saveLiveops(); renderAll(); toast('Dados apagados');
+}
+
+function bindPerfil() {
+  $('#pForm').onsubmit = async e => {
+    e.preventDefault();
+    const msg = $('#pMsg');
+    const sa = $('#pStartAt').value, ea = $('#pEndAt').value;
+    if (parseHM(sa) === null || parseHM(ea) === null) return showMsg(msg, 'Informe os horários no formato HH:mm.', 'err');
+    Object.assign(state.config, { nome: $('#pNome').value.trim(), remindStartOn: $('#pStartOn').checked, remindStartAt: sa.slice(0, 5), remindEndOn: $('#pEndOn').checked, remindEndAt: ea.slice(0, 5) });
+    await saveConfig();
+    $('#userEmail').textContent = state.config.nome || (user && user.email) || '';
+    showMsg(msg, syncError ? 'Não consegui salvar. Veja o aviso no topo.' : 'Perfil salvo.', syncError ? 'err' : 'ok');
+  };
+}
+
+/* ================= Chat: interpretação ================= */
+const WD = { domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 };
+const MONTH_IDX = { janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6, julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12 };
+const TIME = '(\\d{1,2})(?:(?::|h)(\\d{2}))?\\s*(?:hrs|hs|h|horas?)?';
+
+function extractDesc(raw) {
+  let m = /descri[cç][aã]o\s*:\s*(.*)$/i.exec(raw);
+  if (m) return { desc: m[1].trim().slice(0, 200), text: raw.slice(0, m.index) };
+  m = /["“”]([^"“”]+)["“”]/.exec(raw);
+  if (m) return { desc: m[1].trim().slice(0, 200), text: raw.replace(m[0], ' ') };
+  return { desc: '', text: raw };
+}
+const isDurationToken = t => /^\d+(?:[.,]\d+)?(?:h|hs|hrs|min)\d*$/i.test(t);
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function extractTicket(text) {
+  for (const k of state.config.tickets) {
+    const mm = new RegExp(`(^|[^\\w-])(${escRe(k.ticket)})(?![\\w-])`, 'i').exec(text);
+    if (mm) return { ticket: k.ticket.toUpperCase(), text: text.slice(0, mm.index) + mm[1] + ' ' + text.slice(mm.index + mm[0].length) };
+  }
+  let m =/\b(?:chamado|ticket|incidente|requisi[cç][aã]o)\s*(?:n[ºo°.]*\s*)?[:#]?\s*([A-Za-z0-9][\w\-\/.]*[A-Za-z0-9]|\d)/i.exec(text);
+  if (m && /\d/.test(m[1])) return { ticket: m[1].toUpperCase(), text: text.replace(m[0], ' ') };
+  m = /\b((?:INC|CHG|REQ|RITM|PRB|SCTASK|CTASK|TASK|SR|WO|CS|OS)[-_]?[A-Za-z0-9][\w-]*)/i.exec(text);
+  if (m && /\d/.test(m[1])) return { ticket: m[1].toUpperCase(), text: text.replace(m[0], ' ') };
+  m = /\b(?:no|na|pro|pra|para o)\s+((?=[\w-]*[A-Za-z])(?=[\w-]*\d)[A-Za-z][\w-]*)/i.exec(text);
+  if (m && !isDurationToken(m[1])) return { ticket: m[1].toUpperCase(), text: text.replace(m[1], ' ') };
+  return { ticket: '', text };
+}
+function mkDate(y, mo, d) {
+  const dt = new Date(y, mo - 1, d);
+  return (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) ? toISO(dt) : null;
+}
+function extractDate(t, today) {
+  const ty = +today.slice(0, 4);
+  let m = /\b(\d{4})-(\d{2})-(\d{2})\b/.exec(t);
+  if (m) { const d = mkDate(+m[1], +m[2], +m[3]); return d ? { date: d, text: t.replace(m[0], ' ') } : { error: 'Data inválida: ' + m[0] }; }
+  m = /\b(\d{1,2})([\/.])(\d{1,2})(?:\2(\d{2,4}))?\b(?!\s*(?:h|hs|hrs|horas?|min)\b)/.exec(t) || /\b(\d{1,2})(-)(\d{1,2})\2(\d{2,4})\b/.exec(t);
+  if (m) {
+    let y = m[4] ? +m[4] : ty; if (y < 100) y += 2000;
+    const d = mkDate(y, +m[3], +m[1]);
+    return d ? { date: d, text: t.replace(m[0], ' ') } : { error: 'Data inválida: ' + m[0] };
+  }
+  const words = [[/\banteontem\b/, -2], [/\bontem\b/, -1], [/\bhoje\b/, 0], [/\bamanha\b/, 1]];
+  for (const [re, n] of words) { const w = re.exec(t); if (w) return { date: addDays(today, n), text: t.replace(w[0], ' ') }; }
+  m = /\b(?:(proxim[ao]|ultim[ao])\s+)?(domingo|segunda|terca|quarta|quinta|sexta|sabado)(?:-feira| feira)?(?:\s+(passad[ao]|retrasad[ao]|que vem))?\b/.exec(t);
+  if (m) {
+    const wd = WD[m[2]], td = fromISO(today).getDay();
+    const mod = m[1] || m[3] || '';
+    let date;
+    if (/proxim|que vem/.test(mod)) { let diff = (wd - td + 7) % 7; if (diff === 0) diff = 7; date = addDays(today, diff); }
+    else if (/retrasad/.test(mod)) { let diff = (td - wd + 7) % 7; if (diff === 0) diff = 7; date = addDays(today, -diff - 7); }
+    else if (/passad|ultim/.test(mod)) { let diff = (td - wd + 7) % 7; if (diff === 0) diff = 7; date = addDays(today, -diff); }
+    else { date = addDays(today, -((td - wd + 7) % 7)); }
+    return { date, text: t.replace(m[0], ' ') };
+  }
+  m = /\bdia\s+(\d{1,2})\b(?!\s*(?:h|hs|horas?)\b)/.exec(t);
+  if (m) { const d = mkDate(ty, +today.slice(5, 7), +m[1]); return d ? { date: d, text: t.replace(m[0], ' ') } : { error: 'Dia inválido: ' + m[1] }; }
+  return { date: null, text: t };
+}
+const toMin = (h, mi) => { h = +h; mi = mi ? +mi : 0; if (h > 24 || mi > 59 || (h === 24 && mi)) return null; return h * 60 + mi; };
+
+function parseApontar(raw, today) {
+  const d1 = extractDesc(raw);
+  const tk = extractTicket(d1.text);
+  let t = norm(tk.text);
+  const dt = extractDate(t, today);
+  if (dt.error) return { error: dt.error };
+  t = dt.text;
+  let start = null, end = null, dur = null, m;
+
+  m = new RegExp(`\\b(?:das|de|entre)\\s+${TIME}\\s*(?:\\bas\\b|\\bate\\b|\\ba\\b|\\be\\b|-)\\s*${TIME}`).exec(t)
+    || new RegExp(`\\b(\\d{1,2})(?::|h)(\\d{2})?\\s*(?:-|\\bas\\b|\\bate\\b)\\s*${TIME}`).exec(t);
+  if (m) {
+    start = toMin(m[1], m[2]); end = toMin(m[3], m[4]);
+    if (start === null || end === null) return { error: 'Horário inválido.' };
+    t = t.replace(m[0], ' ');
+  } else {
+    m = new RegExp(`\\b(?:a partir d[ao]s?|comecando (?:as|a partir das)|iniciando (?:as|a partir das)|com inicio as|inicio as|das|as)\\s+${TIME}`).exec(t);
+    if (m) { start = toMin(m[1], m[2]); if (start === null || start >= 1440) return { error: 'Horário de início inválido.' }; t = t.replace(m[0], ' '); }
+  }
+  if (end === null) {
+    m = /\b(\d+(?:[.,]\d+)?)\s*(?:hrs|hr|hs|h|horas?)(?![a-z])(?:(\d{2})\b|\s*e\s*(\d{1,2})\s*(?:min|minutos?)?|\s+(\d{1,2})\s*(?:min|minutos?)\b)?/.exec(t);
+    if (m) dur = Math.round(parseFloat(m[1].replace(',', '.')) * 60) + +(m[2] || m[3] || m[4] || 0);
+    else { m = /\b(\d+)\s*(?:min|minutos?)\b/.exec(t); if (m) dur = +m[1]; }
+  }
+  const draft = { date: dt.date || today, dateImplicit: !dt.date, ticket: tk.ticket, desc: d1.desc };
+  let overnight = false;
+  if (end !== null) {
+    if (end === start || (end === 1440 && start === 0)) { if (end === start) return { error: 'O fim deve ser maior que o início.' }; }
+    if (end < start) { overnight = true; }
+    if (end === 1440) { end = 1440; }
+  } else {
+    if (dur === null) return { error: start !== null ? 'Informe a quantidade de horas ou o horário de fim. Ex.: "2h a partir das 14h".' : 'Não encontrei a quantidade de horas. Ex.: "aponta 8h hoje".' };
+    if (dur <= 0) return { error: 'A quantidade de horas deve ser maior que zero.' };
+    if (dur >= 1440) return { error: 'Um apontamento deve ter menos de 24 horas.' };
+    if (start === null) { start = state.config.chatStart; draft.startDefault = true; }
+    end = start + dur;
+    if (end > 1440) { end -= 1440; overnight = true; }
+  }
+  draft.start = start; draft.end = end; draft.overnight = overnight;
+  return { draft };
+}
+
+const HE_RE = /\b(he|horas?[\s-]+extras?|horas?[\s-]+excedentes?|excedentes?)\b/;
+function detectIntent(t) {
+  if (/^\s*(ajuda|help|\?|comandos|exemplos)\b/.test(t)) return 'help';
+  if (/\b(desfazer|desfaz|desfaca)\b/.test(t) || (/\b(apag\w*|exclu\w*|remov\w*|delet\w*)\b/.test(t) && /\bultim/.test(t))) return 'undo';
+  if (/^\s*(cancel\w*|nao|esquece)\b/.test(t)) return 'cancel';
+  const tool = norm(toolName()).trim();
+  if (/\bpendent/.test(t) || (tool && t.includes(tool)) || /\bmarc\w*\b.*\b(lancad|apontad)/.test(t)) {
+    if (/\bdesmarc/.test(t)) return 'lv-unmark';
+    if (/\b(pendent|falta|faltam|quais|lista)/.test(t)) return 'lv-pending';
+    if (/\b(marc|lancei|apontei|lancad|apontad|feito|conclu|ok)\w*/.test(t)) return 'lv-mark';
+    return 'lv-pending';
+  }
+  if (/\b(quanto|quantas|total|resumo|relatorio|saldo)\b/.test(t) || /^\s*horas?\s+d[oae]/.test(t)) return 'query';
+  if (HE_RE.test(t) && (/\b(apont|lanc|registr|marc|inclu|adicion|coloc|faz|fiz|bot)\w*/.test(t) || /\d/.test(t))) return 'he';
+  if (/\b(apont|lanc|lanca|registr|marc|inclu)\w*/.test(t)) return 'apontar';
+  if (/\d\s*(h|hs|horas?|min)\b/.test(t) || /\bdas\s+\d/.test(t)) return 'apontar';
+  if (/\b(ajuda|como)\b/.test(t)) return 'help';
+  return 'unknown';
+}
+
+function parseQuery(raw, today) {
+  const tk = extractTicket(raw);
+  const t = norm(tk.text);
+  let from, to, label;
+  const ym = today.slice(0, 7);
+  const yearM = /\b(20\d{2})\b/.exec(t);
+  const monthM = new RegExp(`\\b(${Object.keys(MONTH_IDX).join('|')})\\b`).exec(t);
+  if (/semana passada|ultima semana/.test(t)) { from = addDays(mondayOf(today), -7); to = addDays(from, 6); label = 'na semana passada'; }
+  else if (/\bsemana\b/.test(t)) { from = mondayOf(today); to = addDays(from, 6); label = 'nesta semana'; }
+  else if (/mes passado|ultimo mes/.test(t)) { const d = fromISO(ym + '-01'); d.setMonth(d.getMonth() - 1); const p = toISO(d).slice(0, 7); from = p + '-01'; to = monthEnd(p); label = `em ${MONTHS[+p.slice(5) - 1]}/${p.slice(0, 4)}`; }
+  else if (monthM) { const y = yearM ? +yearM[1] : +today.slice(0, 4); const p = `${y}-${pad(MONTH_IDX[monthM[1]])}`; from = p + '-01'; to = monthEnd(p); label = `em ${MONTHS[MONTH_IDX[monthM[1]] - 1]}/${y}`; }
+  else if (/\bmes\b/.test(t)) { from = ym + '-01'; to = monthEnd(ym); label = 'neste mês'; }
+  else if (/\bano\b/.test(t) || yearM) { const y = yearM ? yearM[1] : today.slice(0, 4); from = `${y}-01-01`; to = `${y}-12-31`; label = `em ${y}`; }
+  else {
+    const d = extractDate(t, today);
+    if (d.error) return { error: d.error };
+    if (d.date) { from = to = d.date; label = d.date === today ? 'hoje' : `em ${fmtDate(d.date)}`; }
+    else if (tk.ticket) { from = '0000-01-01'; to = '9999-12-31'; label = 'em todo o período'; }
+    else { from = to = today; label = 'hoje'; }
+  }
+  return { from, to, label, ticket: tk.ticket };
+}
+
+/* ================= Chat: interface ================= */
+function addBubble(role, html, buttons) {
+  const log = $('#chatLog');
+  const b = document.createElement('div');
+  b.className = 'bubble ' + role;
+  b.innerHTML = html;
+  if (buttons && buttons.length) {
+    const wrap = document.createElement('div'); wrap.className = 'btns';
+    buttons.forEach(bt => {
+      const el = document.createElement('button');
+      el.className = 'btn sm ' + (bt.cls || ''); el.textContent = bt.label;
+      el.onclick = () => { wrap.querySelectorAll('button').forEach(x => x.disabled = true); bt.onClick(); };
+      wrap.appendChild(el);
+    });
+    b.appendChild(wrap);
+  }
+  log.appendChild(b);
+  log.scrollTop = log.scrollHeight;
+  return b;
+}
+const bot = (h, btns) => addBubble('bot', h, btns);
+
+const helpHtml = () => {
+  const k = defaultTicket();
+  return `Posso te ajudar com isto:
+<ul>
+<li><b>Apontar:</b> <code>aponta 8h hoje</code> · <code>8h no dia 16/09/26 no INC0012345</code> · <code>das 14h às 18h ontem descrição: ajuste NF-e</code></li>
+<li><b>Hora extra:</b> <code>2h de HE hoje</code> · <code>HE das 18h às 20h ontem</code></li>
+<li><b>Consultar:</b> <code>quanto apontei hoje?</code> · <code>total da semana</code> · <code>horas do chamado 476077 em setembro</code></li>
+<li><b>${esc(toolName())}:</b> <code>pendentes no ${esc(toolName().toLowerCase())}</code> · <code>lancei hoje no ${esc(toolName().toLowerCase())}</code></li>
+<li><b>Corrigir:</b> <code>desfazer</code> apaga o último apontamento</li>
+</ul>
+Sem horário, lanço as horas corridas a partir das ${fmtMin(state.config.chatStart)}. A HE começa no fim das horas normais do dia e só entra quando as ${hoursLabel(state.config.jornada)} normais estiverem completas.
+${k ? `Sem chamado, uso o padrão <b>${esc(k)}</b>.` : 'Você ainda não tem chamado padrão; cadastre em Configurações.'}`;
+};
+
+function segsTable(segs) {
+  return `<table><thead><tr><th>Horário</th><th>Tipo</th><th>Motivo</th></tr></thead><tbody>${
+    segs.map(s => `<tr><td class="num">${fmtDate(s.date).slice(0, 5)} ${fmtMin(s.start)}–${fmtMin(s.end)}</td><td><span class="badge ${s.type === 'Normal' ? 'normal' : 'extra'}">${s.type}</span></td><td>${esc(s.reason) || '—'}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+
+function fillDefaultTicket(d) {
+  if (d.ticket) return;
+  const k = defaultTicket();
+  if (k) { d.ticket = k; d.ticketDefault = true; }
+}
+
+// Ajusta um rascunho de HE: começa no fim das horas normais e exige a jornada completa em dia útil.
+function prepareHE(d) {
+  const cfg = state.config;
+  const c = classifyDay(d.date, state.entries);
+  const dur = (d.overnight ? d.end + 1440 : d.end) - d.start;
+  const dayEntries = state.entries.filter(e => e.date === d.date);
+  const dayEnd = dayEntries.reduce((m, e) => Math.max(m, e.end), 0);
+  let start = d.start;
+  d.he = true;
+  if (c.info.kind === 'util') {
+    if (c.normal < cfg.jornada) {
+      return `Ainda não consigo lançar HE em ${fmtDate(d.date)}. O dia tem ${fmtDur(c.normal)} de horas normais e precisa das ${hoursLabel(cfg.jornada)} completas antes da hora extra. Faltam ${fmtDur(cfg.jornada - c.normal)}.<br><span class="muted small">Dica: <code>aponta ${hoursLabel(cfg.jornada - c.normal)} ${d.date === todayISO() ? 'hoje' : 'no dia ' + fmtDate(d.date).slice(0, 5)}</code> e depois peça a HE de novo.</span>`;
+    }
+    const normalEnd = c.segs.filter(s => s.type === 'Normal').reduce((m, s) => Math.max(m, s.end), 0);
+    if (d.startDefault) {
+      start = normalEnd;
+      d.heFrom = `a partir do fim das horas normais (${fmtMin(normalEnd)})`;
+      if (conflictsFor({ date: d.date, start, end: Math.min(1440, start + dur) }, []).length && dayEnd > normalEnd) {
+        start = dayEnd;
+        d.heFrom = `logo depois do último apontamento do dia (${fmtMin(dayEnd)}), porque ${fmtMin(normalEnd)} já estava ocupado`;
+      }
+    } else if (start < normalEnd) {
+      return `A HE precisa começar depois do fim das horas normais, que terminam às ${fmtMin(normalEnd)} em ${fmtDate(d.date)}.`;
+    }
+  } else if (d.startDefault) {
+    start = dayEnd > 0 ? dayEnd : cfg.chatStart;
+    d.heFrom = dayEnd > 0 ? `logo depois do último apontamento do dia (${fmtMin(dayEnd)})` : `a partir das ${fmtMin(start)} (${c.info.label.toLowerCase()}: tudo conta como excedente)`;
+  }
+  if (start >= 1440) return 'O dia já está apontado até a meia-noite; não há espaço para a HE.';
+  let end = start + dur, overnight = false;
+  if (end > 1440) { end -= 1440; overnight = true; }
+  d.start = start; d.end = end; d.overnight = overnight; d.startDefault = false;
+  return null;
+}
+
+function previewDraft(d) {
+  const parts = buildParts(d.date, d.start, d.end, d.overnight);
+  const err = validateParts(parts, d.ticket);
+  if (err) { state.chatPending = null; bot(`Opa, não deu para gravar: ${esc(err)}`); return; }
+  const tmp = parts.map((p, i) => ({ ...p, id: '__tmp' + i, ticket: d.ticket.toUpperCase(), desc: d.desc, manual: false, he: !!d.he }));
+  const pool = state.entries.concat(tmp);
+  const segs = [];
+  for (const p of tmp) segs.push(...classifyDay(p.date, pool).segs.filter(s => s.entry.id === p.id));
+  const tot = totalsOf(segs);
+  const info = dayInfo(d.date);
+  const html = `<strong>${d.he ? 'Hora extra — confere?' : 'Confere pra mim?'}</strong><br>
+    ${fmtDate(d.date)} (${dowName(d.date)}${info.kind !== 'util' ? ' · ' + esc(info.label) : ''})${d.dateImplicit ? ' <span class="muted small">— sem data, usei hoje</span>' : ''}<br>
+    ${fmtMin(d.start)} às ${fmtMin(d.end)}${d.overnight ? ' do dia seguinte' : ''} · duração ${fmtDur(tot.normal + tot.extra)}${d.startDefault ? ' <span class="muted small">(corridas a partir das ' + fmtMin(d.start) + ')</span>' : ''}${d.heFrom ? `<br><span class="muted small">Comecei ${esc(d.heFrom)}.</span>` : ''}<br>
+    Chamado <strong>${esc(d.ticket.toUpperCase())}</strong>${d.ticketDefault ? ' <span class="muted small">(padrão)</span>' : ''}${d.desc ? '<br>Descrição: ' + esc(d.desc) : ''}
+    ${segsTable(segs)}
+    Normal ${fmtDur(tot.normal)} · Excedente ${fmtDur(tot.extra)}`;
+  state.chatPending = { type: 'confirm', draft: d };
+  bot(html, [
+    { label: 'Confirmar', cls: 'primary', onClick: () => confirmDraft(d) },
+    { label: 'Cancelar', onClick: () => { state.chatPending = null; bot('Tudo bem, não gravei nada.'); } }
+  ]);
+}
+
+async function confirmDraft(d) {
+  state.chatPending = null;
+  if (d.he) {
+    // revalida a regra das 8h caso algo tenha mudado entre a prévia e a confirmação
+    const c = classifyDay(d.date, state.entries);
+    if (c.info.kind === 'util' && c.normal < state.config.jornada) { bot(`Não gravei: o dia ${fmtDate(d.date)} não tem mais as ${hoursLabel(state.config.jornada)} normais completas.`); return; }
+  }
+  const parts = buildParts(d.date, d.start, d.end, d.overnight);
+  const err = validateParts(parts, d.ticket);
+  if (err) { bot(`Opa, não deu para gravar: ${esc(err)}`); return; }
+  addParts(parts, { ticket: d.ticket, desc: d.desc, he: !!d.he, origin: 'chat' });
+  await saveEntries();
+  state.selDate = d.date; state.calMonth = d.date.slice(0, 7);
+  renderAll();
+  const c = classifyDay(d.date, state.entries);
+  bot(`Pronto! ${d.he ? 'HE lançada' : 'Horas lançadas'} no chamado ${esc(d.ticket.toUpperCase())} em ${fmtDate(d.date)}, ${fmtMin(d.start)}–${fmtMin(d.end)}. O dia está com ${fmtDur(c.normal)} normais e ${fmtDur(c.extra)} excedentes.`);
+}
+
+function answerQuery(q) {
+  const segs = segsInRange(q.from, q.to, q.ticket);
+  const t = totalsOf(segs);
+  let html = `${q.ticket ? `Chamado <strong>${esc(q.ticket)}</strong> ` : 'Você apontou '}${esc(q.label)}`;
+  if (q.from !== q.to && q.from !== '0000-01-01') html += ` <span class="muted small">(${fmtDate(q.from)} a ${fmtDate(q.to)})</span>`;
+  if (!segs.length) { bot(html + ': nada por enquanto.'); return; }
+  html += `:<br>Normal <strong>${fmtDur(t.normal)}</strong> · Excedente <strong>${fmtDur(t.extra)}</strong> · Total <strong>${fmtDur(t.normal + t.extra)}</strong>`;
+  if (!q.ticket) {
+    const g = groupSegs(segs, s => s.ticket, s => s.ticket).sort((a, b) => (b.normal + b.extra) - (a.normal + a.extra));
+    html += `<table><thead><tr><th>Chamado</th><th class="num">Normal</th><th class="num">Exced.</th></tr></thead><tbody>${
+      g.slice(0, 12).map(x => `<tr><td>${esc(x.label)}</td><td class="num">${fmtDur(x.normal)}</td><td class="num">${fmtDur(x.extra)}</td></tr>`).join('')
+    }</tbody></table>${g.length > 12 ? `<span class="muted small">+${g.length - 12} chamado(s). Veja em Relatórios.</span>` : ''}`;
+  } else if (q.from === q.to) {
+    html += segsTable(segs);
+  }
+  if (q.from === q.to && segs.length) {
+    const lv = lvStatus(q.from);
+    html += `<br><span class="muted small">${esc(toolName())}: ${lv.done ? (lv.changed ? 'marcado, mas o dia mudou depois' : 'já lançado') : 'ainda pendente'}.</span>`;
+  }
+  bot(html);
+}
+
+function answerPending() {
+  const today = todayISO();
+  const from = today.slice(0, 8) + '01';
+  const list = pendingLiveops(from, today);
+  if (!list.length) { bot(`Tudo em dia! Nenhum dia deste mês está pendente no ${esc(toolName())}.`); return; }
+  bot(`Faltam ${list.length} dia(s) para lançar no ${esc(toolName())} neste mês:
+    <table><thead><tr><th>Dia</th><th class="num">Normal</th><th class="num">Exced.</th><th></th></tr></thead><tbody>${
+      list.map(x => `<tr><td>${fmtDate(x.date).slice(0, 5)} ${DOW_SHORT[fromISO(x.date).getDay()]}</td><td class="num">${fmtDur(x.c.normal)}</td><td class="num">${fmtDur(x.c.extra)}</td><td>${x.lv.changed ? 'alterado' : ''}</td></tr>`).join('')
+    }</tbody></table>
+    <span class="muted small">Depois de lançar, marque na aba Dia ou me diga <code>lancei hoje no ${esc(toolName().toLowerCase())}</code>.</span>`);
+}
+
+async function markFromChat(raw, on) {
+  const today = todayISO();
+  const dt = extractDate(norm(raw), today);
+  if (dt.error) { bot(esc(dt.error)); return; }
+  const date = dt.date || today;
+  const c = classifyDay(date, state.entries);
+  if (on && !c.segs.length) { bot(`Não há horas apontadas em ${fmtDate(date)} para marcar como lançadas.`); return; }
+  await setLiveops(date, on);
+  bot(on
+    ? `Marquei ${fmtDate(date)} como lançado no ${esc(toolName())} (${fmtDur(c.normal)} normais, ${fmtDur(c.extra)} excedentes).`
+    : `Desmarquei ${fmtDate(date)}. O dia volta a aparecer como pendente no ${esc(toolName())}.`);
+}
+
+function handleUndo() {
+  if (!state.entries.length) { bot('Não há nada para desfazer.'); return; }
+  const last = state.entries.reduce((a, b) => (b.createdAt || 0) > (a.createdAt || 0) ? b : a);
+  const group = state.entries.filter(e => e.createdAt && last.createdAt && Math.abs(e.createdAt - last.createdAt) < 5 && e.ticket === last.ticket);
+  const desc = group.map(e => `${fmtDate(e.date)} ${fmtMin(e.start)}–${fmtMin(e.end)}`).join(', ');
+  bot(`Apago o último apontamento? <strong>${esc(last.ticket)}</strong> — ${desc}`, [
+    { label: 'Apagar', cls: 'danger', onClick: async () => {
+      const ids = new Set(group.map(e => e.id));
+      state.entries = state.entries.filter(e => !ids.has(e.id));
+      await saveEntries(); renderAll(); bot('Apagado. O dia já foi recalculado.');
+    } },
+    { label: 'Manter', onClick: () => bot('Beleza, mantive.') }
+  ]);
+}
+
+function askOrPreview(d) {
+  fillDefaultTicket(d);
+  if (!d.ticket) {
+    state.chatPending = { type: 'ticket', draft: d };
+    return bot(`Anotei ${fmtDate(d.date)}, ${fmtMin(d.start)}–${fmtMin(d.end)}. Em qual chamado?`);
+  }
+  return previewDraft(d);
+}
+
+function handleChat(raw) {
+  raw = raw.trim(); if (!raw) return;
+  addBubble('user', esc(raw));
+  const today = todayISO();
+  const t = norm(raw);
+
+  if (state.chatPending && state.chatPending.type === 'ticket') {
+    if (/^\s*(cancel\w*|esquece|nao)\b/.test(t)) { state.chatPending = null; bot('Tudo bem, deixei pra lá.'); return; }
+    let ticket = extractTicket(raw).ticket;
+    if (!ticket && /^[\w\-\/.]+$/.test(raw) && /\d/.test(raw)) ticket = raw.toUpperCase();
+    if (ticket) { const d = state.chatPending.draft; d.ticket = ticket; state.chatPending = null; previewDraft(d); return; }
+    if (detectIntent(t) === 'unknown') { bot('Não reconheci o chamado. Me passa só o número, tipo <code>INC0012345</code>, ou digite <code>cancelar</code>.'); return; }
+    state.chatPending = null;
+  }
+
+  const intent = detectIntent(t);
+  if (intent === 'help') return bot(helpHtml());
+  if (intent === 'cancel') { const had = !!state.chatPending; state.chatPending = null; return bot(had ? 'Tudo bem, cancelei.' : 'Não tinha nada pendente, mas estou por aqui.'); }
+  if (intent === 'undo') return handleUndo();
+  if (intent === 'lv-pending') return answerPending();
+  if (intent === 'lv-mark') return markFromChat(raw, true);
+  if (intent === 'lv-unmark') return markFromChat(raw, false);
+  if (intent === 'query') { const q = parseQuery(raw, today); return q.error ? bot(esc(q.error)) : answerQuery(q); }
+  if (intent === 'he') {
+    const r = parseApontar(raw.replace(/(\d)\s*HE\b/gi, '$1h '), today);
+    if (r.error) return bot(esc(r.error.replace('aponta 8h hoje no INC0012345', '2h de HE hoje')) + '<br><span class="muted small">Exemplo: <code>2h de HE hoje</code></span>');
+    const err = prepareHE(r.draft);
+    if (err) return bot(err);
+    return askOrPreview(r.draft);
+  }
+  if (intent === 'apontar') {
+    const r = parseApontar(raw, today);
+    if (r.error) return bot(esc(r.error) + '<br><span class="muted small">Se precisar, digite <code>ajuda</code>.</span>');
+    return askOrPreview(r.draft);
+  }
+  bot('Hmm, essa eu não entendi. ' + helpHtml());
+}
+
+/* ================= Navegação e eventos ================= */
+function switchTab(name) {
+  $$('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  $$('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + name));
+  if (name === 'relatorios') renderReport();
+  if (name === 'feriados') renderHolidays();
+  if (name === 'config') renderConfig();
+}
+function selectDate(d) {
+  if (!d) return;
+  state.selDate = d; state.calMonth = d.slice(0, 7);
+  if (!state.editId) $('#fDate').value = d;
+  renderDay(); renderCalendar();
+}
+function renderAll() {
+  renderTimer(); renderDay(); renderCalendar(); renderTicketList();
+  const active = $('.tabs button.active').dataset.tab;
+  if (active === 'relatorios') renderReport();
+  if (active === 'feriados') renderHolidays();
+  if (active === 'config') renderConfig();
+}
+
+function bind() {
+  $$('.tabs button').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+  $('#dPrev').onclick = () => selectDate(addDays(state.selDate, -1));
+  $('#dNext').onclick = () => selectDate(addDays(state.selDate, 1));
+  $('#dToday').onclick = () => selectDate(todayISO());
+  $('#dDate').onchange = e => selectDate(e.target.value);
+  $('#calPrev').onclick = () => { const d = fromISO(state.calMonth + '-01'); d.setMonth(d.getMonth() - 1); state.calMonth = toISO(d).slice(0, 7); renderCalendar(); };
+  $('#calNext').onclick = () => { const d = fromISO(state.calMonth + '-01'); d.setMonth(d.getMonth() + 1); state.calMonth = toISO(d).slice(0, 7); renderCalendar(); };
+  $('#cal').onclick = e => { const b = e.target.closest('[data-date]'); if (b) selectDate(b.dataset.date); };
+  $('#dTable').onclick = e => {
+    const ed = e.target.closest('[data-edit]'); if (ed) return editEntry(ed.dataset.edit);
+    const dl = e.target.closest('[data-del]'); if (dl) return deleteEntry(dl.dataset.del);
+  };
+  $('#entryForm').onsubmit = submitForm;
+  $('#fCancel').onclick = () => { resetForm(); hideMsg($('#fMsg')); };
+  $('#fJornada').onclick = launchJornada;
+  $('#tBtn').onclick = toggleTimer;
+  $('#tTicket').onkeydown = e => { if (e.key === 'Enter') toggleTimer(); };
+
+  $('#rFrom').onchange = e => { state.report.from = e.target.value; renderReport(); };
+  $('#rTo').onchange = e => { state.report.to = e.target.value; renderReport(); };
+  $('#rTicket').oninput = e => { state.report.ticket = e.target.value; renderReport(); };
+  $('#rGroup').onchange = e => { state.report.group = e.target.value; renderReport(); };
+  $$('.quick [data-q]').forEach(b => b.onclick = () => quickRange(b.dataset.q));
+  $('#rCsv').onclick = exportCsv;
+
+  $('#hPrev').onclick = () => { state.hYear--; renderHolidays(); };
+  $('#hNext').onclick = () => { state.hYear++; renderHolidays(); };
+  $('#tab-feriados').addEventListener('change', async e => {
+    const k = e.target.dataset.hkey, f = e.target.dataset.fkey;
+    if (k) { const s = new Set(state.config.disabledHolidays); e.target.checked ? s.delete(k) : s.add(k); state.config.disabledHolidays = [...s]; }
+    else if (f) { const s = new Set(state.config.facultativos); e.target.checked ? s.add(f) : s.delete(f); state.config.facultativos = [...s]; }
+    else return;
+    await saveConfig(); renderAll(); toast('Calendário atualizado; dias recalculados');
+  });
+  $('#hCustom').onclick = async e => {
+    const b = e.target.closest('[data-hdel]'); if (!b) return;
+    state.config.customHolidays = state.config.customHolidays.filter(c => c.id !== b.dataset.hdel);
+    await saveConfig(); renderAll();
+  };
+  $('#hForm').onsubmit = async e => {
+    e.preventDefault();
+    const date = $('#hDate').value, name = $('#hName').value.trim();
+    if (!date || !name) return;
+    state.config.customHolidays.push({ id: uid(), date, name, esfera: $('#hEsfera').value, recurring: $('#hRecurring').checked });
+    $('#hName').value = ''; $('#hRecurring').checked = false;
+    await saveConfig(); renderAll(); toast('Feriado incluído');
+  };
+
+  $('#cForm').onsubmit = saveConfigForm;
+  $('#bExport').onclick = exportBackup;
+  $('#bImport').onclick = () => $('#bFile').click();
+  $('#bFile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) await importBackup(f); };
+  $('#bClear').onclick = clearAll;
+
+  $('#chatForm').onsubmit = e => { e.preventDefault(); const i = $('#chatInput'); const v = i.value; i.value = ''; handleChat(v); };
+  const setChatOpen = open => {
+    $('#chat').classList.toggle('closed', !open);
+    document.body.classList.toggle('chat-open', open);
+    try { localStorage.setItem('apont:chatOpen', open ? '1' : '0'); } catch (e) {}
+    if (open) { const l = $('#chatLog'); l.scrollTop = l.scrollHeight; $('#chatInput').focus(); }
+  };
+  $('#chatMin').onclick = () => setChatOpen(false);
+  $('#chatFab').onclick = () => setChatOpen(true);
+  let startOpen = true;
+  try { startOpen = localStorage.getItem('apont:chatOpen') !== '0'; } catch (e) {}
+  $('#chat').classList.toggle('closed', !startOpen);
+  document.body.classList.toggle('chat-open', startOpen);
+  $('#chatChips').onclick = e => {
+    const c = e.target.closest('.chip'); if (!c) return;
+    if (c.dataset.send) handleChat(c.dataset.send);
+    else { const i = $('#chatInput'); i.value = c.dataset.fill; i.focus(); i.setSelectionRange(0, 2); }
+  };
+
+  $('#lvCheck').onchange = e => setLiveops(state.selDate, e.target.checked);
+
+  $('#kForm').onsubmit = async e => {
+    e.preventDefault();
+    const msg = $('#kMsg'); hideMsg(msg);
+    const ticket = $('#kTicket').value.trim().toUpperCase();
+    if (!ticket) return;
+    if (state.config.tickets.some(k => k.ticket === ticket)) return showMsg(msg, 'Este chamado já está cadastrado.', 'err');
+    const makeDefault = $('#kDefault').checked || !state.config.tickets.length;
+    if (makeDefault) state.config.tickets.forEach(k => k.isDefault = false);
+    state.config.tickets.push({ id: uid(), ticket, desc: $('#kDesc').value.trim(), isDefault: makeDefault });
+    $('#kTicket').value = ''; $('#kDesc').value = ''; $('#kDefault').checked = false;
+    await saveConfig(); if (!state.editId) resetForm(); renderAll(); showMsg(msg, 'Chamado cadastrado.', 'ok');
+  };
+  $('#kTable').addEventListener('change', async e => {
+    const id = e.target.dataset.kdef; if (!id) return;
+    state.config.tickets.forEach(k => k.isDefault = k.id === id);
+    await saveConfig(); if (!state.editId) resetForm(); renderAll(); toast('Chamado padrão atualizado');
+  });
+  $('#kTable').addEventListener('click', async e => {
+    const b = e.target.closest('[data-kdel]'); if (!b) return;
+    const k = state.config.tickets.find(x => x.id === b.dataset.kdel); if (!k) return;
+    const ok = await modal('Remover chamado', `Remover <b>${esc(k.ticket)}</b> da lista? Os apontamentos já feitos nele continuam salvos.${k.isDefault ? '<br>Ele é o padrão hoje; você fica sem chamado padrão até marcar outro.' : ''}`,
+      [{ label: 'Cancelar', value: false }, { label: 'Remover', value: true, cls: 'stop' }]);
+    if (!ok) return;
+    state.config.tickets = state.config.tickets.filter(x => x.id !== k.id);
+    await saveConfig(); if (!state.editId) resetForm(); renderAll();
+  });
+  $('#lvForm').onsubmit = async e => {
+    e.preventDefault();
+    const v = $('#lvTool').value.trim(); if (!v) return;
+    state.config.consultTool = v; await saveConfig(); renderAll(); toast('Ferramenta atualizada');
+  };
+
+  setInterval(() => { if (state.running) renderTimer(); }, 1000);
+  window.addEventListener('beforeunload', e => { if (pending) { e.preventDefault(); e.returnValue = ''; } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderTimer(); } });
+}
+
+async function init() {
+  bind();
+  bindAuth();
+  bindPerfil();
+  await initCloud();
+}
+
+window.__apont = { state, synced, loadAll, get pending() { return pending; }, prepareHE, lvStatus, setLiveops, defaultTicket, pendingLiveops, classifyDay, dayInfo, holidayMap, easter, parseApontar, parseQuery, detectIntent, buildParts, validateParts, addParts, handleChat, segsInRange, extractTicket, extractDate };
+init();
+})();
+</script>
+</body>
+</html>
