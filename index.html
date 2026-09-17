@@ -121,6 +121,15 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.pend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
+.pend-grid table{font-size:12px}
+.pend-grid th,.pend-grid td{padding:4px 6px}
+.pend-grid .card{margin-bottom:0}
+.big{display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 10px}
+.big div{font-variant-numeric:tabular-nums}
+.big .v{font-size:20px;font-weight:650}
+.big .l{font-size:12px;color:var(--muted)}
+.v.falta{color:var(--danger)} .v.zero{color:var(--normal)} .v.extra{color:var(--extra)}
 .quick{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
 
 .chat{position:fixed;right:16px;bottom:16px;width:320px;height:min(440px,calc(100vh - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 32px rgba(0,0,0,.18);display:flex;flex-direction:column;z-index:40;overflow:hidden}
@@ -341,6 +350,10 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
       </div>
       <div class="kpis" id="rKpis"></div>
       <div class="tbl-wrap" id="rTable"></div>
+    </div>
+    <div class="pend-grid">
+      <div class="card" id="rGoal"></div>
+      <div class="card" id="rPend"></div>
     </div>
   </section>
 
@@ -1243,10 +1256,76 @@ function groupSegs(segs, keyFn, labelFn) {
 const totalsOf = segs => segs.reduce((t, s) => { const d = s.end - s.start; if (s.type === 'Normal') t.normal += d; else t.extra += d; return t; }, { normal: 0, extra: 0 });
 const cellDur = m => `${fmtDur(m)} <span class="muted small">(${fmtDec(m)})</span>`;
 
+// Dias úteis e meta de horas normais de um mês (YYYY-MM)
+function monthGoal(ym) {
+  const today = todayISO(), last = monthEnd(ym);
+  let dias = 0, decorridos = 0, d = ym + '-01';
+  while (d <= last) {
+    if (dayInfo(d).kind === 'util') { dias++; if (d <= today) decorridos++; }
+    d = addDays(d, 1);
+  }
+  const j = state.config.jornada;
+  return { ym, dias, decorridos, meta: dias * j, metaDecorrida: decorridos * j };
+}
+function monthsInRange(from, to) {
+  const out = [];
+  let ym = from.slice(0, 7);
+  const end = to.slice(0, 7);
+  while (ym <= end && out.length < 24) {
+    out.push(ym);
+    const d = fromISO(ym + '-01'); d.setMonth(d.getMonth() + 1); ym = toISO(d).slice(0, 7);
+  }
+  return out;
+}
+function renderGoalBox() {
+  const r = state.report;
+  const meses = monthsInRange(r.from, r.to);
+  const rows = meses.map(ym => {
+    const g = monthGoal(ym);
+    const t = totalsOf(segsInRange(ym + '-01', monthEnd(ym), ''));
+    const faltaMes = Math.max(0, g.meta - t.normal);
+    const faltaHoje = Math.max(0, g.metaDecorrida - t.normal);
+    const [y, m] = ym.split('-');
+    return { label: `${MONTHS[+m - 1]}/${y}`, g, normal: t.normal, extra: t.extra, faltaMes, faltaHoje };
+  });
+  const som = rows.reduce((a, x) => ({ meta: a.meta + x.g.meta, normal: a.normal + x.normal, faltaMes: a.faltaMes + x.faltaMes, faltaHoje: a.faltaHoje + x.faltaHoje }), { meta: 0, normal: 0, faltaMes: 0, faltaHoje: 0 });
+  $('#rGoal').innerHTML = `<h2>Horas normais que faltam no mês</h2>
+    <div class="small muted" style="margin-bottom:8px">Meta = dias úteis × ${hoursLabel(state.config.jornada)}. Considera todos os chamados, sem o filtro de chamado.</div>
+    <div class="big">
+      <div><div class="l">Falta até hoje</div><div class="v ${som.faltaHoje ? 'falta' : 'zero'}">${fmtDur(som.faltaHoje)}</div></div>
+      <div><div class="l">Falta no mês inteiro</div><div class="v ${som.faltaMes ? 'falta' : 'zero'}">${fmtDur(som.faltaMes)}</div></div>
+      <div><div class="l">Normais apontadas</div><div class="v">${fmtDur(som.normal)}</div></div>
+      <div><div class="l">Meta</div><div class="v">${fmtDur(som.meta)}</div></div>
+    </div>
+    <div class="tbl-wrap"><table><thead><tr><th>Mês</th><th class="num">Dias úteis</th><th class="num">Meta</th><th class="num">Normais</th><th class="num">Falta até hoje</th><th class="num">Falta no mês</th></tr></thead><tbody>${
+      rows.map(x => `<tr><td style="text-transform:capitalize">${x.label}</td><td class="num">${x.g.decorridos < x.g.dias ? x.g.decorridos + '/' + x.g.dias : x.g.dias}</td><td class="num">${fmtDur(x.g.meta)}</td><td class="num">${fmtDur(x.normal)}</td><td class="num">${fmtDur(x.faltaHoje)}</td><td class="num">${fmtDur(x.faltaMes)}</td></tr>`).join('')
+    }</tbody></table></div>`;
+}
+function renderPendBox() {
+  const r = state.report;
+  const list = pendingLiveops(r.from, r.to);
+  let n = 0, x = 0;
+  list.forEach(i => { n += i.c.normal; x += i.c.extra; });
+  $('#rPend').innerHTML = `<h2>Horas pendentes de apontar no ${esc(toolName())}</h2>
+    <div class="small muted" style="margin-bottom:8px">Dias com horas no programa e ainda sem a marcação de lançamento, no período filtrado.</div>
+    <div class="big">
+      <div><div class="l">Normal</div><div class="v ${n ? 'falta' : 'zero'}">${fmtDur(n)}</div></div>
+      <div><div class="l">Excedente</div><div class="v ${x ? 'extra' : 'zero'}">${fmtDur(x)}</div></div>
+      <div><div class="l">Total</div><div class="v">${fmtDur(n + x)}</div></div>
+      <div><div class="l">Dias</div><div class="v">${list.length}</div></div>
+    </div>
+    ${list.length ? `<div class="tbl-wrap"><table><thead><tr><th>Dia</th><th class="num">Normal</th><th class="num">Excedente</th><th></th></tr></thead><tbody>${
+      list.slice(0, 15).map(i => `<tr><td class="num">${fmtDate(i.date).slice(0, 5)} ${DOW_SHORT[fromISO(i.date).getDay()]}</td><td class="num">${fmtDur(i.c.normal)}</td><td class="num">${fmtDur(i.c.extra)}</td><td>${i.lv.changed ? '<span class="badge warn">alterado depois</span>' : ''}</td></tr>`).join('')
+    }</tbody></table></div>${list.length > 15 ? `<span class="muted small">+${list.length - 15} dia(s).</span>` : ''}`
+    : '<div class="empty">Nada pendente no período.</div>'}`;
+}
+
 function renderReport() {
   const r = state.report;
   $('#rFrom').value = r.from; $('#rTo').value = r.to; $('#rTicket').value = r.ticket; $('#rGroup').value = r.group;
-  if (!r.from || !r.to || r.from > r.to) { $('#rTable').innerHTML = '<div class="empty">Período inválido.</div>'; $('#rKpis').innerHTML = ''; return; }
+  if (!r.from || !r.to || r.from > r.to) { $('#rTable').innerHTML = '<div class="empty">Período inválido.</div>'; $('#rKpis').innerHTML = ''; $('#rGoal').innerHTML = ''; $('#rPend').innerHTML = ''; return; }
+  renderGoalBox();
+  renderPendBox();
   const segs = segsInRange(r.from, r.to, r.ticket);
   const t = totalsOf(segs);
   $('#rKpis').innerHTML = `
@@ -2072,7 +2151,7 @@ async function init() {
   await initCloud();
 }
 
-window.__apont = { state, extractDates, planMulti, synced, loadAll, get pending() { return pending; }, prepareHE, lvStatus, setLiveops, defaultTicket, pendingLiveops, classifyDay, dayInfo, holidayMap, easter, parseApontar, parseQuery, detectIntent, buildParts, validateParts, addParts, handleChat, segsInRange, extractTicket, extractDate };
+window.__apont = { state, monthGoal, monthsInRange, extractDates, planMulti, synced, loadAll, get pending() { return pending; }, prepareHE, lvStatus, setLiveops, defaultTicket, pendingLiveops, classifyDay, dayInfo, holidayMap, easter, parseApontar, parseQuery, detectIntent, buildParts, validateParts, addParts, handleChat, segsInRange, extractTicket, extractDate };
 init();
 })();
 </script>
