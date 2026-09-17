@@ -440,12 +440,12 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
         <div class="form-grid">
           <label>Jornada diária (horas)<input type="number" id="cJornada" min="1" max="24" step="0.5" required></label>
           <label>Início do expediente<input type="time" id="cWorkStart" required></label>
-          <label>Início do intervalo<input type="time" id="cLunchStart" required></label>
-          <label>Fim do intervalo<input type="time" id="cLunchEnd" required></label>
+          <label>Início do intervalo<input type="time" id="cLunchStart"></label>
+          <label>Fim do intervalo<input type="time" id="cLunchEnd"></label>
           <label>Fim do expediente<input type="time" id="cWorkEnd" required></label>
           <label>Início padrão no chat<input type="time" id="cChatStart" required></label>
         </div>
-        <div class="small muted" style="margin-top:8px">Apontamentos fora do expediente em dia útil recebem um alerta, mas podem ser gravados. O chat lança as horas corridas a partir do início padrão.</div>
+        <div class="small muted" style="margin-top:8px">Deixe os dois campos de intervalo em branco para uma jornada corrida, sem intervalo. Apontamentos fora do expediente em dia útil recebem um alerta, mas podem ser gravados. O chat lança as horas corridas a partir do início padrão.</div>
         <div class="form-actions"><button class="btn primary">Salvar configurações</button></div>
         <div id="cMsg" class="msg"></div>
       </form>
@@ -576,7 +576,7 @@ const holidaySig = h => JSON.stringify([h.date, h.name, h.esfera, !!h.recurring]
 const lvSig = v => JSON.stringify([v.at, v.normal, v.extra]);
 const perfilFromConfig = c => ({
   nome: c.nome || null, jornada_min: c.jornada, inicio_expediente: c.workStart, fim_expediente: c.workEnd,
-  inicio_intervalo: c.lunchStart, fim_intervalo: c.lunchEnd, inicio_chat: c.chatStart, ferramenta: c.consultTool || 'Liveops',
+  inicio_intervalo: c.lunchStart ?? null, fim_intervalo: c.lunchEnd ?? null, inicio_chat: c.chatStart, ferramenta: c.consultTool || 'Liveops',
   feriados_desativados: c.disabledHolidays, facultativos_ativos: c.facultativos,
   lembrete_inicio_ativo: !!c.remindStartOn, lembrete_inicio_hora: c.remindStartAt || '08:30',
   lembrete_fim_ativo: !!c.remindEndOn, lembrete_fim_hora: c.remindEndAt || '17:30'
@@ -724,7 +724,7 @@ async function loadAll() {
     ...structuredCloneSafe(DEFAULT_CONFIG),
     nome: p.nome || '', email: p.email || user.email,
     jornada: p.jornada_min ?? 480, workStart: p.inicio_expediente ?? 480, workEnd: p.fim_expediente ?? 1020,
-    lunchStart: p.inicio_intervalo ?? 720, lunchEnd: p.fim_intervalo ?? 780, chatStart: p.inicio_chat ?? 480,
+    lunchStart: p.inicio_intervalo ?? null, lunchEnd: p.fim_intervalo ?? null, chatStart: p.inicio_chat ?? 480,
     consultTool: p.ferramenta || 'Liveops',
     disabledHolidays: p.feriados_desativados || [], facultativos: p.facultativos_ativos || [],
     remindStartOn: !!p.lembrete_inicio_ativo, remindStartAt: hhmm(p.lembrete_inicio_hora) || '08:30',
@@ -1161,7 +1161,10 @@ async function launchJornada() {
   const date = $('#fDate').value || state.selDate;
   if (!ticket) return showMsg(msg, 'Informe o chamado para lançar a jornada padrão.', 'err');
   const c = state.config;
-  const parts = [{ date, start: c.workStart, end: c.lunchStart }, { date, start: c.lunchEnd, end: c.workEnd }].filter(p => p.end > p.start);
+  const parts = (c.lunchStart === null || c.lunchEnd === null)
+    ? [{ date, start: c.workStart, end: c.workEnd }]
+    : [{ date, start: c.workStart, end: c.lunchStart }, { date, start: c.lunchEnd, end: c.workEnd }];
+  if (parts.some(p => p.end <= p.start)) return showMsg(msg, 'Verifique os horários do expediente em Configurações.', 'err');
   const err = validateParts(parts, ticket);
   if (err) return showMsg(msg, err, 'err');
   addParts(parts, { ticket, desc: $('#fDesc').value, manual: false, origin: 'form' });
@@ -1404,7 +1407,8 @@ function renderConfig() {
   const c = state.config;
   $('#cJornada').value = c.jornada / 60;
   $('#cWorkStart').value = fmtMin(c.workStart); $('#cWorkEnd').value = fmtMin(c.workEnd);
-  $('#cLunchStart').value = fmtMin(c.lunchStart); $('#cLunchEnd').value = fmtMin(c.lunchEnd);
+  $('#cLunchStart').value = c.lunchStart == null ? '' : fmtMin(c.lunchStart);
+  $('#cLunchEnd').value = c.lunchEnd == null ? '' : fmtMin(c.lunchEnd);
   $('#cChatStart').value = fmtMin(c.chatStart);
   $('#lvTool').value = toolName();
   $('#kTable').innerHTML = c.tickets.length
@@ -1421,12 +1425,16 @@ async function saveConfigForm(ev) {
   ev.preventDefault();
   const msg = $('#cMsg');
   const j = parseFloat(String($('#cJornada').value).replace(',', '.'));
-  const vals = ['#cWorkStart', '#cWorkEnd', '#cLunchStart', '#cLunchEnd', '#cChatStart'].map(s => parseHM($(s).value));
-  if (!(j > 0 && j <= 24) || vals.some(v => v === null)) return showMsg(msg, 'Verifique os valores informados.', 'err');
-  const [ws, we, ls, le, cs] = vals;
-  if (!(ws < ls && ls <= le && le < we)) return showMsg(msg, 'Os horários devem seguir a ordem: início ≤ intervalo ≤ fim do expediente.', 'err');
+  const [ws, we, cs] = ['#cWorkStart', '#cWorkEnd', '#cChatStart'].map(s => parseHM($(s).value));
+  if (!(j > 0 && j <= 24) || ws === null || we === null || cs === null) return showMsg(msg, 'Verifique os valores informados.', 'err');
+  const lsTxt = $('#cLunchStart').value.trim(), leTxt = $('#cLunchEnd').value.trim();
+  const ls = lsTxt ? parseHM(lsTxt) : null, le = leTxt ? parseHM(leTxt) : null;
+  if ((lsTxt && ls === null) || (leTxt && le === null)) return showMsg(msg, 'Informe o intervalo no formato HH:mm.', 'err');
+  if ((ls === null) !== (le === null)) return showMsg(msg, 'Preencha os dois horários do intervalo, ou deixe os dois em branco para jornada sem intervalo.', 'err');
+  if (!(ws < we)) return showMsg(msg, 'O fim do expediente deve ser maior que o início.', 'err');
+  if (ls !== null && !(ws < ls && ls <= le && le < we)) return showMsg(msg, 'O intervalo precisa ficar dentro do expediente: início < intervalo < fim.', 'err');
   Object.assign(state.config, { jornada: Math.round(j * 60), workStart: ws, workEnd: we, lunchStart: ls, lunchEnd: le, chatStart: cs });
-  await saveConfig(); renderAll(); showMsg(msg, 'Configurações salvas. Os dias foram recalculados.', 'ok');
+  await saveConfig(); renderAll(); showMsg(msg, state.config.lunchStart === null ? 'Configurações salvas, com jornada corrida (sem intervalo). Os dias foram recalculados.' : 'Configurações salvas. Os dias foram recalculados.', 'ok');
 }
 function exportBackup() {
   const data = { app: 'apontamento-horas', version: 2, exportedAt: new Date().toISOString(), entries: state.entries, config: state.config, liveops: state.liveops };
