@@ -145,6 +145,7 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
 .bubble.bot{align-self:flex-start;background:var(--surface-2);border-bottom-left-radius:3px}
 .bubble table{margin:6px 0;font-size:12px}
 .bubble th,.bubble td{padding:3px 5px}
+.bubble td.num{white-space:nowrap}
 .bubble ul{margin:4px 0;padding-left:18px}
 .bubble code{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:0 4px;font-size:12px}
 .bubble .btns{display:flex;gap:6px;margin-top:8px}
@@ -957,7 +958,7 @@ function validateParts(parts, ticket, excludeIds = []) {
 }
 
 function addParts(parts, meta, keepId) {
-  const now = Date.now();
+  const now = meta.batchAt || Date.now();
   const created = parts.map((p, i) => ({
     id: (i === 0 && keepId) ? keepId : uid(),
     date: p.date, start: p.start, end: p.end,
@@ -1483,13 +1484,63 @@ function extractDate(t, today) {
   if (m) { const d = mkDate(ty, +today.slice(5, 7), +m[1]); return d ? { date: d, text: t.replace(m[0], ' ') } : { error: 'Dia inválido: ' + m[1] }; }
   return { date: null, text: t };
 }
+// Uma ou várias datas: listas ("05/09, 06/09 e 11/09"), "dias 5, 6 e 11/09" e intervalos ("de 01/09 a 12/09").
+function extractDates(t, today) {
+  const ty = +today.slice(0, 4), tm = +today.slice(5, 7);
+  const fixY = y => { y = y ? +y : ty; return y < 100 ? y + 2000 : y; };
+  const found = [];
+  let text = t;
+  const cut = str => { text = text.replace(str, ' '); };
+  let m = /\b(\d{1,2})(?:[\/.](\d{1,2}))?(?:[\/.](\d{2,4}))?(?:\s+(?:a|ate)\s+|\s*-\s*)(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\b(?!\s*(?:h|hs|hrs|horas?|min)\b)/.exec(text);
+  if (m) {
+    const y2 = fixY(m[6]), mo2 = +m[5];
+    const end = mkDate(y2, mo2, +m[4]);
+    const start = mkDate(m[3] ? fixY(m[3]) : y2, m[2] ? +m[2] : mo2, +m[1]);
+    if (!start || !end) return { error: 'Intervalo de datas inválido: ' + m[0].trim() };
+    if (start > end) return { error: 'No intervalo, a data inicial precisa vir antes da final.' };
+    cut(m[0]);
+    const all = /todos os dias|inclusive (?:fim|sab|dom|feriado)|incluindo (?:fim|sab|dom|feriado)|dias corridos/.test(text);
+    let d = start, n = 0;
+    while (d <= end) {
+      if (++n > 62) return { error: 'O intervalo pode ter no máximo 62 dias.' };
+      if (all || dayInfo(d).kind === 'util') found.push(d);
+      d = addDays(d, 1);
+    }
+    if (!found.length) return { error: 'Não há dias úteis nesse intervalo.' };
+    return { dates: found, text, utilOnly: !all };
+  }
+  m = /\bdias?\s+((?:\d{1,2}\s*(?:,|\be\b)\s*)+)(\d{1,2})(?:[\/.](\d{1,2})(?:[\/.](\d{2,4}))?)?\b(?!\s*(?:h|hs|hrs|horas?|min)\b)/.exec(text);
+  if (m) {
+    const mo = m[3] ? +m[3] : tm, y = fixY(m[4]);
+    const nums = (m[1].match(/\d{1,2}/g) || []).concat(m[2]);
+    for (const n of nums) {
+      const d = mkDate(y, mo, +n);
+      if (!d) return { error: `Dia inválido: ${n}/${pad(mo)}` };
+      found.push(d);
+    }
+    cut(m[0]);
+  }
+  const hits = [...text.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})([\/.])(\d{1,2})(?:\5(\d{2,4}))?\b(?!\s*(?:h|hs|hrs|horas?|min)\b)/g)];
+  for (const h of hits) {
+    const d = h[1] ? mkDate(+h[1], +h[2], +h[3]) : mkDate(fixY(h[7]), +h[6], +h[4]);
+    if (!d) return { error: 'Data inválida: ' + h[0] };
+    found.push(d);
+  }
+  hits.forEach(h => cut(h[0]));
+  if (!found.length) {
+    const one = extractDate(text, today);
+    if (one.error) return one;
+    return { dates: one.date ? [one.date] : [], text: one.text };
+  }
+  return { dates: [...new Set(found)].sort(), text };
+}
 const toMin = (h, mi) => { h = +h; mi = mi ? +mi : 0; if (h > 24 || mi > 59 || (h === 24 && mi)) return null; return h * 60 + mi; };
 
 function parseApontar(raw, today) {
   const d1 = extractDesc(raw);
   const tk = extractTicket(d1.text);
   let t = norm(tk.text);
-  const dt = extractDate(t, today);
+  const dt = extractDates(t, today);
   if (dt.error) return { error: dt.error };
   t = dt.text;
   let start = null, end = null, dur = null, m;
@@ -1509,7 +1560,7 @@ function parseApontar(raw, today) {
     if (m) dur = Math.round(parseFloat(m[1].replace(',', '.')) * 60) + +(m[2] || m[3] || m[4] || 0);
     else { m = /\b(\d+)\s*(?:min|minutos?)\b/.exec(t); if (m) dur = +m[1]; }
   }
-  const draft = { date: dt.date || today, dateImplicit: !dt.date, ticket: tk.ticket, desc: d1.desc };
+  const draft = { date: dt.dates[0] || today, dates: dt.dates.length ? dt.dates : [today], dateImplicit: !dt.dates.length, rangeUtilOnly: !!dt.utilOnly, ticket: tk.ticket, desc: d1.desc };
   let overnight = false;
   if (end !== null) {
     if (end === start || (end === 1440 && start === 0)) { if (end === start) return { error: 'O fim deve ser maior que o início.' }; }
@@ -1597,7 +1648,8 @@ const helpHtml = () => {
   return `Posso te ajudar com isto:
 <ul>
 <li><b>Apontar:</b> <code>aponta 8h hoje</code> · <code>8h no dia 16/09/26 no INC0012345</code> · <code>das 14h às 18h ontem descrição: ajuste NF-e</code></li>
-<li><b>Hora extra:</b> <code>2h de HE hoje</code> · <code>HE das 18h às 20h ontem</code></li>
+<li><b>Vários dias:</b> <code>8h nos dias 05/09, 06/09, 07/09 e 11/09</code> · <code>8h dias 14, 15 e 16/09</code> · <code>8h de 01/09 a 12/09</code> (intervalo: só dias úteis; escreva <code>todos os dias</code> para incluir fins de semana e feriados)</li>
+<li><b>Hora extra:</b> <code>2h de HE hoje</code> · <code>HE das 18h às 20h ontem</code> · <code>1h de HE nos dias 10/09 e 11/09</code></li>
 <li><b>Consultar:</b> <code>quanto apontei hoje?</code> · <code>total da semana</code> · <code>horas do chamado 476077 em setembro</code></li>
 <li><b>${esc(toolName())}:</b> <code>pendentes no ${esc(toolName().toLowerCase())}</code> · <code>lancei hoje no ${esc(toolName().toLowerCase())}</code></li>
 <li><b>Corrigir:</b> <code>desfazer</code> apaga o último apontamento</li>
@@ -1653,7 +1705,79 @@ function prepareHE(d) {
   return null;
 }
 
+const shortErr = e => String(e || '').split('<br>')[0].replace(/<[^>]+>/g, '').trim();
+
+// Monta o plano de lançamento para cada data da lista, validando dia a dia.
+function planMulti(base) {
+  const pool = state.entries.slice();
+  return base.dates.map(date => {
+    const d = { ...base, date, dates: null, dateImplicit: false, heFrom: '' };
+    let err = d.he ? prepareHE(d) : null;
+    let parts = [], segs = [];
+    if (!err) {
+      parts = buildParts(d.date, d.start, d.end, d.overnight);
+      err = validateParts(parts, d.ticket);
+      if (!err) {
+        const c = parts.map(p => conflictsFor(p, [], pool)).flat()[0];
+        if (c) err = `Conflito com ${c.ticket} das ${fmtMin(c.start)} às ${fmtMin(c.end)} em ${fmtDate(c.date)}.`;
+      }
+    }
+    if (!err) {
+      const tmp = parts.map((p, i) => ({ ...p, id: `__m${date}_${i}`, ticket: d.ticket.toUpperCase(), desc: d.desc, manual: false, he: !!d.he }));
+      pool.push(...tmp);
+      segs = tmp.flatMap(p => classifyDay(p.date, pool).segs.filter(s => s.entry.id === p.id));
+    }
+    return { d, parts, segs, err: err ? shortErr(err) : null, info: dayInfo(date) };
+  });
+}
+
+function previewMulti(base) {
+  const plan = planMulti(base);
+  const ok = plan.filter(p => !p.err);
+  const tot = totalsOf(ok.flatMap(p => p.segs));
+  const dur = (base.overnight ? base.end + 1440 : base.end) - base.start;
+  const when = base.he
+    ? `${fmtDur(dur)} por dia, a partir do fim das horas normais de cada dia`
+    : base.startDefault ? `${fmtDur(dur)} por dia, corridas a partir das ${fmtMin(base.start)}` : `${fmtMin(base.start)} às ${fmtMin(base.end)}${base.overnight ? ' do dia seguinte' : ''} em cada dia`;
+  const rows = plan.map(p => {
+    const t = totalsOf(p.segs);
+    const obs = p.err ? `<span class="badge warn">fica de fora</span> ${esc(p.err)}` : (p.info.kind !== 'util' ? esc(p.info.label) : '');
+    return `<tr${p.err ? ' style="opacity:.65"' : ''}><td class="num">${fmtDate(p.d.date).slice(0, 5)} ${DOW_SHORT[fromISO(p.d.date).getDay()]}</td><td class="num">${p.err ? '—' : fmtMin(p.d.start) + '–' + fmtMin(p.d.end)}</td><td class="num">${p.err ? '—' : fmtDur(t.normal)}</td><td class="num">${p.err ? '—' : fmtDur(t.extra)}</td><td>${obs}</td></tr>`;
+  }).join('');
+  const html = `<strong>${base.he ? 'Hora extra em' : 'Lançar em'} ${plan.length} dias — confere?</strong><br>
+    ${esc(when)}<br>
+    Chamado <strong>${esc(base.ticket.toUpperCase())}</strong>${base.ticketDefault ? ' <span class="muted small">(padrão)</span>' : ''}${base.desc ? '<br>Descrição: ' + esc(base.desc) : ''}
+    ${base.rangeUtilOnly ? '<br><span class="muted small">Intervalo com dias úteis apenas. Para incluir fins de semana e feriados, escreva "todos os dias".</span>' : ''}
+    <table><thead><tr><th>Dia</th><th>Horário</th><th class="num">Normal</th><th class="num">Exced.</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    ${ok.length ? `Total: Normal ${fmtDur(tot.normal)} · Excedente ${fmtDur(tot.extra)} em ${ok.length} dia(s)` : ''}`;
+  if (!ok.length) { state.chatPending = null; bot(html + '<br>Nenhum dia pode ser lançado.'); return; }
+  state.chatPending = { type: 'confirm', draft: base };
+  bot(html, [
+    { label: `Confirmar ${ok.length} dia(s)`, cls: 'primary', onClick: () => confirmMulti(base) },
+    { label: 'Cancelar', onClick: () => { state.chatPending = null; bot('Tudo bem, não gravei nada.'); } }
+  ]);
+}
+
+async function confirmMulti(base) {
+  state.chatPending = null;
+  const plan = planMulti(base);
+  const ok = plan.filter(p => !p.err);
+  if (!ok.length) { bot('Não gravei: nenhum dia ficou disponível.'); return; }
+  const batchAt = Date.now();
+  ok.forEach(p => addParts(p.parts, { ticket: p.d.ticket, desc: p.d.desc, he: !!p.d.he, origin: 'chat', batchAt }));
+  await saveEntries();
+  const last = ok[ok.length - 1].d.date;
+  state.selDate = last; state.calMonth = last.slice(0, 7);
+  renderAll();
+  const tot = totalsOf(ok.flatMap(p => p.segs));
+  const skipped = plan.length - ok.length;
+  bot(`Pronto! ${base.he ? 'HE lançada' : 'Lancei'} em ${ok.length} dia(s) no chamado ${esc(base.ticket.toUpperCase())}: ${ok.map(p => fmtDate(p.d.date).slice(0, 5)).join(', ')}.<br>
+    Normal ${fmtDur(tot.normal)} · Excedente ${fmtDur(tot.extra)}.${skipped ? ` ${skipped} dia(s) ficaram de fora.` : ''}<br>
+    <span class="muted small">Se precisar, <code>desfazer</code> apaga esse lote inteiro.</span>`);
+}
+
 function previewDraft(d) {
+  if (d.dates && d.dates.length > 1) return previewMulti(d);
   const parts = buildParts(d.date, d.start, d.end, d.overnight);
   const err = validateParts(parts, d.ticket);
   if (err) { state.chatPending = null; bot(`Opa, não deu para gravar: ${esc(err)}`); return; }
@@ -1760,7 +1884,9 @@ function askOrPreview(d) {
   fillDefaultTicket(d);
   if (!d.ticket) {
     state.chatPending = { type: 'ticket', draft: d };
-    return bot(`Anotei ${fmtDate(d.date)}, ${fmtMin(d.start)}–${fmtMin(d.end)}. Em qual chamado?`);
+    return bot(d.dates && d.dates.length > 1
+      ? `Anotei ${d.dates.length} dias (${d.dates.map(x => fmtDate(x).slice(0, 5)).join(', ')}). Em qual chamado?`
+      : `Anotei ${fmtDate(d.date)}, ${fmtMin(d.start)}–${fmtMin(d.end)}. Em qual chamado?`);
   }
   return previewDraft(d);
 }
@@ -1791,6 +1917,7 @@ function handleChat(raw) {
   if (intent === 'he') {
     const r = parseApontar(raw.replace(/(\d)\s*HE\b/gi, '$1h '), today);
     if (r.error) return bot(esc(r.error.replace('aponta 8h hoje no INC0012345', '2h de HE hoje')) + '<br><span class="muted small">Exemplo: <code>2h de HE hoje</code></span>');
+    if (r.draft.dates.length > 1) { r.draft.he = true; return askOrPreview(r.draft); }
     const err = prepareHE(r.draft);
     if (err) return bot(err);
     return askOrPreview(r.draft);
@@ -1945,7 +2072,7 @@ async function init() {
   await initCloud();
 }
 
-window.__apont = { state, synced, loadAll, get pending() { return pending; }, prepareHE, lvStatus, setLiveops, defaultTicket, pendingLiveops, classifyDay, dayInfo, holidayMap, easter, parseApontar, parseQuery, detectIntent, buildParts, validateParts, addParts, handleChat, segsInRange, extractTicket, extractDate };
+window.__apont = { state, extractDates, planMulti, synced, loadAll, get pending() { return pending; }, prepareHE, lvStatus, setLiveops, defaultTicket, pendingLiveops, classifyDay, dayInfo, holidayMap, easter, parseApontar, parseQuery, detectIntent, buildParts, validateParts, addParts, handleChat, segsInRange, extractTicket, extractDate };
 init();
 })();
 </script>
