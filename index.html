@@ -13,6 +13,7 @@
   --danger:#c02d2d; --danger-bg:#fae3e3; --holiday:#7d36ad; --holiday-bg:#efe2f7;
   --weekend-bg:#eceff3; --warn:#8a5d00; --warn-bg:#fff2cf;
   --radius:10px; --shadow:0 1px 2px rgba(16,24,40,.06);
+  --ch1:#1f64d6; --ch2:#a94f0b;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark){
@@ -22,6 +23,7 @@
     --normal:#62c98f; --normal-bg:#15301f; --extra:#f0a261; --extra-bg:#3a2616;
     --danger:#ff7a7a; --danger-bg:#3b1b1b; --holiday:#c893f0; --holiday-bg:#2d1f3a;
     --weekend-bg:#1b2129; --warn:#e6c15a; --warn-bg:#33290f;
+    --ch1:#4a8bf0; --ch2:#c87f3c;
     --shadow:none; color-scheme: dark;
   }
 }
@@ -29,7 +31,7 @@
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
 h1{font-size:17px;margin:0;font-weight:650}
-h2{font-size:14px;margin:0 0 10px;font-weight:650}
+h2{font-size:14px;margin:0 0 8px;font-weight:650}
 h3{font-size:15px;margin:0 0 8px}
 .muted{color:var(--muted)} .small{font-size:12px}
 .num{font-variant-numeric:tabular-nums}
@@ -57,16 +59,16 @@ input[type=checkbox]{width:16px;height:16px;padding:0;accent-color:var(--accent)
 .clock.running{color:var(--danger)}
 .running-info{font-size:12px;color:var(--muted)}
 
-main{max-width:1280px;margin:0 auto;padding:14px 16px 96px}
+main{max-width:1400px;margin:0 auto;padding:10px 14px 88px}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px;overflow-x:auto}
 .tabs button{border:0;background:none;padding:8px 12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);font-weight:600}
 .tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab{display:none}
 .tab.active{display:block}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);margin-bottom:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;box-shadow:var(--shadow);margin-bottom:10px}
 
-.day-grid{display:grid;grid-template-columns:290px minmax(0,1fr);gap:14px;align-items:start}
-.day-head{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.day-grid{display:grid;grid-template-columns:268px minmax(0,1fr);gap:10px;align-items:start}
+.day-head{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--muted);white-space:nowrap}
 .badge.util{background:var(--accent-soft);color:var(--accent)}
 .badge.fds{background:var(--weekend-bg);color:var(--muted)}
@@ -74,15 +76,15 @@ main{max-width:1280px;margin:0 auto;padding:14px 16px 96px}
 .badge.normal{background:var(--normal-bg);color:var(--normal)}
 .badge.extra{background:var(--extra-bg);color:var(--extra)}
 .badge.warn{background:var(--warn-bg);color:var(--warn)}
-.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px}
 .kpi .lbl{font-size:12px;color:var(--muted)}
-.kpi .val{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
+.kpi .val{font-size:19px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.2}
 .kpi .sub{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .kpi.normal .val{color:var(--normal)} .kpi.extra .val{color:var(--extra)}
 
 table{width:100%;border-collapse:collapse}
-th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+th,td{text-align:left;padding:4px 7px;border-bottom:1px solid var(--border);vertical-align:middle}
 th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
 td.num,th.num{text-align:right}
 tr.split td{border-top:0}
@@ -106,7 +108,7 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
 .cal-head strong{text-transform:capitalize}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .cal .dow{font-size:11px;color:var(--muted);text-align:center;padding:2px 0}
-.cal .d{border:1px solid transparent;border-radius:7px;background:transparent;padding:3px 0 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;min-height:40px}
+.cal .d{border:1px solid transparent;border-radius:7px;background:transparent;padding:2px 0;cursor:pointer;display:flex;flex-direction:column;align-items:center;min-height:34px}
 .cal .d:hover{border-color:var(--border)}
 .cal .d .n{font-size:13px;font-weight:600}
 .cal .d .h{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -121,6 +123,23 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.badge.ok{background:var(--normal-bg);color:var(--normal)}
+.badge.pend{background:var(--warn-bg);color:var(--warn)}
+.chart-ctl{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.chart-ctl .grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chart-ctl .lbl{font-size:12px;color:var(--muted)}
+.tgl{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:2px 9px;font-size:12px;cursor:pointer;text-transform:capitalize}
+.tgl.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.legend-chart{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:4px}
+.legend-chart i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.chart-wrap{position:relative}
+.chart-wrap svg{width:100%;height:auto;display:block}
+.chart-tip{position:absolute;pointer-events:none;background:var(--text);color:var(--bg);padding:5px 8px;border-radius:6px;font-size:12px;white-space:nowrap;opacity:0;transition:opacity .12s;z-index:5}
+.chart-tip.show{opacity:1}
+.alert-pop{position:fixed;right:16px;top:16px;max-width:330px;background:var(--surface);border:1px solid var(--warn);border-left:4px solid var(--warn);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:12px 14px;z-index:80;display:none}
+.alert-pop.show{display:block}
+.alert-pop h3{margin:0 0 4px;font-size:14px}
+.alert-pop .acts{display:flex;gap:8px;margin-top:10px}
 .pend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
 .pend-grid table{font-size:12px}
 .pend-grid th,.pend-grid td{padding:4px 6px}
@@ -185,7 +204,7 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
 .auth-card .btn.primary{padding:9px}
 .auth-card a{color:var(--accent);font-size:13px}
 
-.lv-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface)}
+.lv-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 12px;margin-bottom:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface)}
 .lv-bar.done{border-color:var(--normal);background:var(--normal-bg)}
 .lv-bar.pend{border-color:var(--warn);background:var(--warn-bg)}
 .lv-bar label{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
@@ -287,6 +306,7 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
           <button class="btn" id="dToday">Hoje</button>
           <strong id="dLabel"></strong>
           <span id="dKind" class="badge"></span>
+          <span id="dStatus" class="badge"></span>
         </div>
         <div class="kpis" id="dKpis"></div>
         <div class="lv-bar" id="lvBar">
@@ -354,6 +374,22 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
     <div class="pend-grid">
       <div class="card" id="rGoal"></div>
       <div class="card" id="rPend"></div>
+    </div>
+    <div class="card">
+      <h2>Comparação mensal</h2>
+      <div class="chart-ctl">
+        <div class="grp"><span class="lbl">Anos:</span><span id="chYears"></span></div>
+        <div class="grp"><span class="lbl">Meses:</span><span id="chMonths"></span>
+          <button class="btn sm" id="chAll">Todos</button><button class="btn sm" id="chNone">Nenhum</button></div>
+        <div class="grp"><button class="btn sm" id="chTable">Ver tabela</button></div>
+      </div>
+      <div class="legend-chart">
+        <span><i style="background:var(--ch1)"></i>Horas normais</span>
+        <span><i style="background:var(--ch2)"></i>Horas excedentes</span>
+        <span id="chTicketNote" class="muted"></span>
+      </div>
+      <div class="chart-wrap" id="chWrap"><div class="chart-tip" id="chTip"></div></div>
+      <div class="tbl-wrap" id="chTableWrap" hidden></div>
     </div>
   </section>
 
@@ -451,6 +487,38 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
       </form>
     </div>
     <div class="card">
+      <h2>Sobre o programa</h2>
+      <div class="row" style="align-items:center">
+        <div class="small muted" style="flex:1">Versão <strong id="cVersao"></strong>. O que mudou em cada versão fica no histórico.</div>
+        <button class="btn" id="cNews">Ver novidades</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Alerta de fim de expediente</h2>
+      <form id="aForm">
+        <div class="form-grid">
+          <label class="check"><input type="checkbox" id="aOn"> Avisar antes do fim do expediente</label>
+          <label>Quando avisar
+            <select id="aMode">
+              <option value="antes">Minutos antes do fim do expediente</option>
+              <option value="fixo">Horário fixo</option>
+            </select>
+          </label>
+          <label id="aMinWrap">Minutos antes<input type="number" id="aMin" min="1" max="240" step="1"></label>
+          <label id="aTimeWrap" hidden>Horário<input type="time" id="aTime"></label>
+          <label class="check"><input type="checkbox" id="aUtil"> Somente em dias úteis</label>
+          <label class="check"><input type="checkbox" id="aSkip"> Não avisar se o dia já estiver em dia</label>
+        </div>
+        <div class="small muted" style="margin-top:8px">O aviso aparece como pop-up do Windows (notificação do navegador) e também dentro do programa. Funciona com a página aberta, mesmo minimizada. <span id="aPermInfo"></span></div>
+        <div class="form-actions">
+          <button class="btn primary">Salvar alerta</button>
+          <button type="button" class="btn" id="aPerm">Permitir notificações</button>
+          <button type="button" class="btn" id="aTest">Testar agora</button>
+        </div>
+        <div id="aMsg" class="msg"></div>
+      </form>
+    </div>
+    <div class="card">
       <h2>Cópia de segurança</h2>
       <div class="small muted" style="margin-bottom:10px">Os dados ficam na nuvem e aparecem em qualquer dispositivo com o seu login. Use o backup para guardar uma cópia ou importar os dados da versão offline.</div>
       <div class="row">
@@ -488,6 +556,14 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
 
 <datalist id="ticketList"></datalist>
 <div id="toast" class="toast"></div>
+<div class="alert-pop" id="alertPop" role="alert">
+  <h3 id="alertPopTitle">Fim do expediente chegando</h3>
+  <div id="alertPopBody" class="small muted"></div>
+  <div class="acts">
+    <button class="btn sm primary" id="alertGo">Abrir o dia</button>
+    <button class="btn sm" id="alertClose">Fechar</button>
+  </div>
+</div>
 
 <script>
 (() => {
@@ -579,7 +655,8 @@ const perfilFromConfig = c => ({
   inicio_intervalo: c.lunchStart ?? null, fim_intervalo: c.lunchEnd ?? null, inicio_chat: c.chatStart, ferramenta: c.consultTool || 'Liveops',
   feriados_desativados: c.disabledHolidays, facultativos_ativos: c.facultativos,
   lembrete_inicio_ativo: !!c.remindStartOn, lembrete_inicio_hora: c.remindStartAt || '08:30',
-  lembrete_fim_ativo: !!c.remindEndOn, lembrete_fim_hora: c.remindEndAt || '17:30'
+  lembrete_fim_ativo: !!c.remindEndOn, lembrete_fim_hora: c.remindEndAt || '17:30',
+  alerta: { on: !!c.alertOn, mode: c.alertMode || 'antes', min: +c.alertMin || 15, time: c.alertTime || '16:45', utilOnly: c.alertUtilOnly !== false, skipDone: c.alertSkipDone !== false }
 });
 const runningRow = r => r && ({ user_id: user.id, chamado: r.ticket, descricao: r.desc || '', data: r.date, inicio: r.start, iniciado_em: new Date(r.ts).toISOString() });
 
@@ -729,6 +806,8 @@ async function loadAll() {
     disabledHolidays: p.feriados_desativados || [], facultativos: p.facultativos_ativos || [],
     remindStartOn: !!p.lembrete_inicio_ativo, remindStartAt: hhmm(p.lembrete_inicio_hora) || '08:30',
     remindEndOn: !!p.lembrete_fim_ativo, remindEndAt: hhmm(p.lembrete_fim_hora) || '17:30',
+    alertOn: !!(p.alerta && p.alerta.on), alertMode: (p.alerta && p.alerta.mode) || 'antes', alertMin: (p.alerta && p.alerta.min) ?? 15,
+    alertTime: (p.alerta && p.alerta.time) || '16:45', alertUtilOnly: !(p.alerta && p.alerta.utilOnly === false), alertSkipDone: !(p.alerta && p.alerta.skipDone === false),
     tickets: tickets.map(k => ({ id: k.id, ticket: k.codigo, desc: k.descricao || '', isDefault: k.padrao })),
     customHolidays: holidays.map(h => ({ id: h.id, date: h.data, name: h.nome, esfera: h.esfera, recurring: h.recorrente }))
   };
@@ -774,6 +853,7 @@ async function startSession(u) {
   bot(`Oi${state.config.nome ? ', ' + esc(state.config.nome.split(' ')[0]) : ''}! Eu sou o <b>Pontual</b> e estou aqui pra você não perder nenhuma hora. 😊<br>
     É só me contar, por exemplo: <code>aponta 8h hoje</code> ou <code>2h de HE hoje</code>.${k ? `<br>Se não disser o chamado, uso o padrão <b>${esc(k)}</b>.` : ''}<br>
     Digite <code>ajuda</code> quando quiser.`);
+  newsOnStart();
   const pend = pendingLiveops(todayISO().slice(0, 8) + '01', addDays(todayISO(), -1));
   if (pend.length) bot(`Lembrete: ${pend.length} dia(s) deste mês ainda sem marcação no ${esc(toolName())}. Digite <code>pendentes</code> para ver.`);
 }
@@ -846,6 +926,7 @@ const DEFAULT_CONFIG = {
   disabledHolidays: [], facultativos: [], customHolidays: [],
   tickets: [{ id: 'k476077', ticket: '476077', desc: '', isDefault: true }],
   consultTool: 'Liveops',
+  alertOn: false, alertMode: 'antes', alertMin: 15, alertTime: '16:45', alertUtilOnly: true, alertSkipDone: true,
   nome: '', email: '', remindStartOn: false, remindStartAt: '08:30', remindEndOn: false, remindEndAt: '17:30'
 };
 const state = {
@@ -990,6 +1071,8 @@ function renderDay() {
   const c = classifyDay(date, state.entries);
   const kind = $('#dKind');
   kind.className = 'badge ' + c.info.kind; kind.textContent = c.info.label;
+  const st = dayStatus(date, c), stEl = $('#dStatus');
+  stEl.className = 'badge ' + st.cls; stEl.textContent = st.label;
 
   const falta = c.info.kind === 'util' ? Math.max(0, state.config.jornada - c.countedNormal) : null;
   $('#dKpis').innerHTML = `
@@ -1030,6 +1113,19 @@ function renderDay() {
     $('#dTable').innerHTML = html;
   }
   if (!state.editId) $('#fDate').value = date;
+}
+
+// Em dia / pendente: olha as horas normais do dia útil e a marcação na ferramenta
+function dayStatus(date, c) {
+  c = c || classifyDay(date, state.entries);
+  const lv = lvStatus(date, c), hoje = todayISO();
+  const falta = c.info.kind === 'util' ? Math.max(0, state.config.jornada - c.countedNormal) : 0;
+  if (date > hoje) return { kind: 'futuro', label: 'Dia futuro', cls: '' };
+  if (falta > 0 && (c.segs.length || date < hoje)) return { kind: 'pend', label: `Pendente: faltam ${fmtDur(falta)} normais`, cls: 'pend' };
+  if (!c.segs.length) return { kind: 'vazio', label: c.info.kind === 'util' ? 'Sem apontamento' : 'Sem horas', cls: '' };
+  if (!lv.done) return { kind: 'pend', label: `Pendente no ${toolName()}`, cls: 'pend' };
+  if (lv.changed) return { kind: 'pend', label: `Alterado depois de lançar no ${toolName()}`, cls: 'pend' };
+  return { kind: 'ok', label: 'Em dia', cls: 'ok' };
 }
 
 function lvStatus(date, c) {
@@ -1323,12 +1419,164 @@ function renderPendBox() {
     : '<div class="empty">Nada pendente no período.</div>'}`;
 }
 
+/* ===== Gráfico de comparação mensal ===== */
+const chart = { years: null, months: null, showTable: false };
+const yearsWithData = () => [...new Set(state.entries.map(e => +e.date.slice(0, 4)))].sort();
+function chartInit() {
+  const ys = yearsWithData();
+  if (!chart.years) chart.years = ys.length ? [ys[ys.length - 1]] : [new Date().getFullYear()];
+  chart.years = chart.years.filter(y => ys.includes(y) || y === new Date().getFullYear());
+  if (!chart.years.length) chart.years = [ys[ys.length - 1] || new Date().getFullYear()];
+  if (!chart.months) chart.months = [1,2,3,4,5,6,7,8,9,10,11,12];
+}
+function chartData() {
+  const t = state.report.ticket;
+  return chart.years.map(y => ({
+    year: y,
+    meses: chart.months.map(m => {
+      const ym = `${y}-${pad(m)}`;
+      const tot = totalsOf(segsInRange(ym + '-01', monthEnd(ym), t));
+      return { m, normal: tot.normal, extra: tot.extra, total: tot.normal + tot.extra };
+    })
+  }));
+}
+function niceMax(v) {
+  if (v <= 0) return 60;
+  const h = v / 60, step = h <= 10 ? 2 : h <= 40 ? 10 : h <= 100 ? 20 : 40;
+  return Math.ceil(h / step) * step * 60;
+}
+function renderChart() {
+  chartInit();
+  const ys = yearsWithData(), anos = [...new Set(ys.concat(chart.years))].sort();
+  $('#chYears').innerHTML = anos.map(y => `<button class="tgl ${chart.years.includes(y) ? 'on' : ''}" data-chy="${y}">${y}</button>`).join('');
+  $('#chMonths').innerHTML = MONTHS.map((n, i) => `<button class="tgl ${chart.months.includes(i + 1) ? 'on' : ''}" data-chm="${i + 1}" title="${n}">${n.slice(0, 3)}</button>`).join('');
+  $('#chTicketNote').textContent = state.report.ticket ? `· filtrado pelo chamado ${state.report.ticket}` : '· todos os chamados';
+  $('#chTable').textContent = chart.showTable ? 'Ocultar tabela' : 'Ver tabela';
+
+  const data = chartData();
+  const wrap = $('#chWrap'), tip = $('#chTip');
+  if (!chart.months.length || !data.length) {
+    wrap.innerHTML = '<div class="empty">Escolha pelo menos um mês e um ano.</div>';
+    $('#chTableWrap').hidden = true;
+    return;
+  }
+  const maxV = niceMax(Math.max(0, ...data.flatMap(d => d.meses.map(x => x.total))));
+  const W = 760, H = 300, mL = 46, mR = 12, mT = 16, mB = 34;
+  const iw = W - mL - mR, ih = H - mT - mB;
+  const groups = chart.months.length, nSeries = data.length;
+  const gw = iw / groups, bw = Math.min(46, (gw - 10) / nSeries), gap = 2;
+  const y = v => mT + ih - (v / maxV) * ih;
+  const ticks = 4;
+  let g = '';
+  for (let i = 0; i <= ticks; i++) {
+    const v = maxV * i / ticks, yy = y(v);
+    g += `<line x1="${mL}" y1="${yy}" x2="${W - mR}" y2="${yy}" stroke="var(--border)" stroke-width="1"/>
+          <text x="${mL - 6}" y="${yy + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(v / 60)}h</text>`;
+  }
+  let bars = '', labels = '';
+  chart.months.forEach((m, gi) => {
+    const cx = mL + gi * gw + gw / 2;
+    labels += `<text x="${cx}" y="${H - 14}" text-anchor="middle" font-size="11" fill="var(--muted)">${MONTHS[m - 1].slice(0, 3)}</text>`;
+    data.forEach((d, si) => {
+      const v = d.meses[gi];
+      const x = cx - (nSeries * bw) / 2 + si * bw + 1, w = bw - 2;
+      if (v.total <= 0) return;
+      const yTop = y(v.total), yNormalTop = y(v.normal);
+      const hNormal = Math.max(0, mT + ih - yNormalTop), hExtra = Math.max(0, yNormalTop - yTop - (v.extra > 0 && v.normal > 0 ? gap : 0));
+      const tt = `${MONTHS[m - 1]}/${d.year} — Normal ${fmtDur(v.normal)} · Excedente ${fmtDur(v.extra)} · Total ${fmtDur(v.total)}`;
+      if (v.normal > 0) bars += `<rect x="${x}" y="${yNormalTop}" width="${w}" height="${hNormal}" rx="${v.extra > 0 ? 0 : 4}" fill="var(--ch1)" data-tip="${esc(tt)}"/>`;
+      if (v.extra > 0) bars += `<rect x="${x}" y="${yTop}" width="${w}" height="${hExtra}" rx="4" fill="var(--ch2)" data-tip="${esc(tt)}"/>`;
+      if (groups * nSeries <= 14) labels += `<text x="${x + w / 2}" y="${yTop - 5}" text-anchor="middle" font-size="10" fill="var(--muted)">${fmtDur(v.total)}</text>`;
+      if (nSeries > 1) labels += `<text x="${x + w / 2}" y="${H - 3}" text-anchor="middle" font-size="9" fill="var(--muted)">${String(d.year).slice(2)}</text>`;
+    });
+  });
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Horas normais e excedentes por mês">
+      <line x1="${mL}" y1="${mT + ih}" x2="${W - mR}" y2="${mT + ih}" stroke="var(--border)" stroke-width="1"/>
+      ${g}${bars}${labels}
+    </svg><div class="chart-tip" id="chTip"></div>`;
+  const tip2 = $('#chTip');
+  const svg = wrap.querySelector('svg');
+  svg.addEventListener('mousemove', ev => {
+    const r = ev.target.closest('[data-tip]');
+    if (!r) { tip2.classList.remove('show'); return; }
+    const box = wrap.getBoundingClientRect();
+    tip2.textContent = r.getAttribute('data-tip');
+    tip2.style.left = Math.min(box.width - 10 - tip2.offsetWidth, Math.max(0, ev.clientX - box.left + 12)) + 'px';
+    tip2.style.top = (ev.clientY - box.top - 34) + 'px';
+    tip2.classList.add('show');
+  });
+  svg.addEventListener('mouseleave', () => tip2.classList.remove('show'));
+
+  const tw = $('#chTableWrap');
+  tw.hidden = !chart.showTable;
+  if (chart.showTable) {
+    tw.innerHTML = `<table><thead><tr><th>Mês</th>${data.map(d => `<th class="num">${d.year} normal</th><th class="num">${d.year} exced.</th>`).join('')}</tr></thead><tbody>${
+      chart.months.map((m, gi) => `<tr><td style="text-transform:capitalize">${MONTHS[m - 1]}</td>${data.map(d => `<td class="num">${fmtDur(d.meses[gi].normal)}</td><td class="num">${fmtDur(d.meses[gi].extra)}</td>`).join('')}</tr>`).join('')
+    }<tr class="total"><td>Total</td>${data.map(d => `<td class="num">${fmtDur(d.meses.reduce((a, x) => a + x.normal, 0))}</td><td class="num">${fmtDur(d.meses.reduce((a, x) => a + x.extra, 0))}</td>`).join('')}</tr></tbody></table>`;
+  }
+}
+
+/* ===== Alerta de fim de expediente ===== */
+function alertTargetMin() {
+  const c = state.config;
+  return c.alertMode === 'fixo' ? (parseHM(c.alertTime) ?? 1005) : Math.max(0, c.workEnd - (+c.alertMin || 15));
+}
+const alertKey = () => 'apont:lastAlert';
+function alertAlreadyToday() {
+  try { return localStorage.getItem(alertKey()) === todayISO(); } catch (e) { return false; }
+}
+function markAlerted() { try { localStorage.setItem(alertKey(), todayISO()); } catch (e) {} }
+function showAlertPop(title, body) {
+  $('#alertPopTitle').textContent = title;
+  $('#alertPopBody').textContent = body;
+  $('#alertPop').classList.add('show');
+  try {
+    if (window.Notification && Notification.permission === 'granted') new Notification(title, { body, tag: 'fim-expediente' });
+  } catch (e) {}
+}
+function alertCheck(force) {
+  const c = state.config;
+  if (!force) {
+    if (!c.alertOn || alertAlreadyToday()) return;
+    const hoje = todayISO(), info = dayInfo(hoje);
+    if (c.alertUtilOnly && info.kind !== 'util') return;
+    const now = nowMin(), alvo = alertTargetMin();
+    if (now < alvo || now > alvo + 45) return;
+    if (c.alertSkipDone && dayStatus(hoje).kind === 'ok') { markAlerted(); return; }
+    markAlerted();
+  }
+  const d = classifyDay(todayISO(), state.entries);
+  const falta = Math.max(0, c.jornada - d.countedNormal);
+  showAlertPop('Fim do expediente chegando',
+    falta > 0 ? `Faltam ${fmtDur(falta)} de horas normais hoje. Já apontou ${fmtDur(d.normal)} normais e ${fmtDur(d.extra)} excedentes.`
+              : `Hoje está com ${fmtDur(d.normal)} normais e ${fmtDur(d.extra)} excedentes. Falta marcar o lançamento no ${toolName()}?`);
+}
+function renderAlertConfig() {
+  const c = state.config;
+  $('#aOn').checked = !!c.alertOn;
+  $('#aMode').value = c.alertMode || 'antes';
+  $('#aMin').value = c.alertMin ?? 15;
+  $('#aTime').value = c.alertTime || '16:45';
+  $('#aUtil').checked = c.alertUtilOnly !== false;
+  $('#aSkip').checked = c.alertSkipDone !== false;
+  $('#aMinWrap').hidden = $('#aMode').value !== 'antes';
+  $('#aTimeWrap').hidden = $('#aMode').value !== 'fixo';
+  const perm = (window.Notification && Notification.permission) || 'indisponível';
+  $('#aPermInfo').textContent = perm === 'granted' ? 'Notificações liberadas neste navegador.'
+    : perm === 'denied' ? 'As notificações estão bloqueadas neste navegador; libere nas permissões do site.'
+    : 'Clique em "Permitir notificações" para liberar o pop-up do Windows.';
+  $('#aPermInfo').nextSibling;
+  const alvo = alertTargetMin();
+  $('#aMsg').dataset.alvo = fmtMin(alvo);
+}
+
 function renderReport() {
   const r = state.report;
   $('#rFrom').value = r.from; $('#rTo').value = r.to; $('#rTicket').value = r.ticket; $('#rGroup').value = r.group;
   if (!r.from || !r.to || r.from > r.to) { $('#rTable').innerHTML = '<div class="empty">Período inválido.</div>'; $('#rKpis').innerHTML = ''; $('#rGoal').innerHTML = ''; $('#rPend').innerHTML = ''; return; }
   renderGoalBox();
   renderPendBox();
+  renderChart();
   const segs = segsInRange(r.from, r.to, r.ticket);
   const t = totalsOf(segs);
   $('#rKpis').innerHTML = `
@@ -1411,6 +1659,8 @@ function renderConfig() {
   $('#cLunchEnd').value = c.lunchEnd == null ? '' : fmtMin(c.lunchEnd);
   $('#cChatStart').value = fmtMin(c.chatStart);
   $('#lvTool').value = toolName();
+  renderAlertConfig();
+  $('#cVersao').textContent = APP_VERSION;
   $('#kTable').innerHTML = c.tickets.length
     ? `<table><thead><tr><th>Padrão</th><th>Chamado</th><th>Descrição</th><th></th></tr></thead><tbody>${
         c.tickets.map(t => `<tr><td><input type="radio" name="kDef" data-kdef="${t.id}" ${t.isDefault ? 'checked' : ''} aria-label="Tornar ${esc(t.ticket)} padrão"></td><td><strong>${esc(t.ticket)}</strong>${t.isDefault ? ' <span class="badge normal">padrão</span>' : ''}</td><td>${esc(t.desc)}</td><td class="actions"><button class="btn sm danger" data-kdel="${t.id}">Remover</button></td></tr>`).join('')
@@ -2017,6 +2267,54 @@ function handleChat(raw) {
   bot('Hmm, essa eu não entendi. ' + helpHtml());
 }
 
+
+/* ================= Novidades (changelog) ================= */
+const APP_VERSION = '7.0';
+const CHANGELOG = [
+  { v: '7.0', data: '09/10/2026', itens: [
+    'Gráfico de comparação mensal nos Relatórios: barras empilhadas de horas normais e excedentes, com seleção de meses e comparação entre anos.',
+    'Alerta antes do fim do expediente, com pop-up do Windows e aviso dentro do programa; horário configurável por minutos antes do fim ou horário fixo.',
+    'Status "Em dia / Pendente" na aba Dia, considerando as 8h normais e a marcação na ferramenta da consultoria.',
+    'Aba Dia mais compacta, com margens e cartões menores.',
+    'Este aviso de novidades a cada nova versão.'
+  ] },
+  { v: '6.0', data: '09/10/2026', itens: [
+    'Intervalo opcional: deixando os dois campos em branco, a jornada é corrida, só com início e fim do expediente.'
+  ] },
+  { v: '5.0', data: '09/10/2026', itens: [
+    'Relatórios: quadro de horas normais que faltam no mês (meta por dias úteis) e quadro de horas pendentes de lançar na ferramenta da consultoria.'
+  ] },
+  { v: '4.0', data: '17/09/2026', itens: [
+    'Chat lança horas em vários dias: listas de datas, "dias 14, 15 e 16/09" e intervalos, com confirmação dia a dia.'
+  ] },
+  { v: '3.0', data: '16/09/2026', itens: [
+    'Cadastro de chamados com chamado padrão.',
+    'Hora extra pelo chat, começando no fim das horas normais e exigindo as 8h do dia.',
+    'Chat menor e flutuante, com o assistente Pontual.',
+    'Marcação de horas lançadas na ferramenta da consultoria, com indicação no calendário e nos relatórios.'
+  ] },
+  { v: '2.0', data: '16/09/2026', itens: [
+    'Primeira versão: apontamento por chamado, regras de hora excedente (8h, fim de semana e feriados de São Paulo), cronômetro, relatórios, CSV e chat de comandos.'
+  ] }
+];
+function newsHtml(todas) {
+  const lista = todas ? CHANGELOG : CHANGELOG.slice(0, 1);
+  return lista.map(c => `<div style="margin-bottom:10px"><strong>Versão ${c.v}</strong> <span class="muted small">${c.data}</span>
+    <ul style="margin:6px 0 0;padding-left:18px">${c.itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
+}
+async function showNews(todas) {
+  const r = await modal(todas ? 'Histórico de versões' : `Novidades da versão ${APP_VERSION}`, newsHtml(todas),
+    todas ? [{ label: 'Fechar', value: 'x', cls: 'primary' }]
+          : [{ label: 'Ver histórico', value: 'all' }, { label: 'Entendi', value: 'x', cls: 'primary' }]);
+  try { localStorage.setItem('apont:versaoVista', APP_VERSION); } catch (e) {}
+  if (r === 'all') showNews(true);
+}
+function newsOnStart() {
+  let vista = null;
+  try { vista = localStorage.getItem('apont:versaoVista'); } catch (e) {}
+  if (vista !== APP_VERSION) setTimeout(() => showNews(false), 600);
+}
+
 /* ================= Navegação e eventos ================= */
 function switchTab(name) {
   $$('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
@@ -2089,6 +2387,39 @@ function bind() {
   };
 
   $('#cForm').onsubmit = saveConfigForm;
+  $('#chYears').onclick = e => { const b = e.target.closest('[data-chy]'); if (!b) return; const y = +b.dataset.chy;
+    chart.years = chart.years.includes(y) ? chart.years.filter(x => x !== y) : [...chart.years, y].sort();
+    if (!chart.years.length) chart.years = [y];
+    renderChart(); };
+  $('#chMonths').onclick = e => { const b = e.target.closest('[data-chm]'); if (!b) return; const m = +b.dataset.chm;
+    chart.months = chart.months.includes(m) ? chart.months.filter(x => x !== m) : [...chart.months, m].sort((a, z) => a - z);
+    renderChart(); };
+  $('#chAll').onclick = () => { chart.months = [1,2,3,4,5,6,7,8,9,10,11,12]; renderChart(); };
+  $('#chNone').onclick = () => { chart.months = []; renderChart(); };
+  $('#chTable').onclick = () => { chart.showTable = !chart.showTable; renderChart(); };
+
+  $('#aMode').onchange = () => { $('#aMinWrap').hidden = $('#aMode').value !== 'antes'; $('#aTimeWrap').hidden = $('#aMode').value !== 'fixo'; };
+  $('#aForm').onsubmit = async e => {
+    e.preventDefault();
+    const msg = $('#aMsg');
+    const min = parseInt($('#aMin').value, 10);
+    const t = $('#aTime').value;
+    if ($('#aMode').value === 'antes' && !(min > 0 && min <= 240)) return showMsg(msg, 'Informe de 1 a 240 minutos.', 'err');
+    if ($('#aMode').value === 'fixo' && parseHM(t) === null) return showMsg(msg, 'Informe o horário no formato HH:mm.', 'err');
+    Object.assign(state.config, { alertOn: $('#aOn').checked, alertMode: $('#aMode').value, alertMin: min || 15, alertTime: t || '16:45', alertUtilOnly: $('#aUtil').checked, alertSkipDone: $('#aSkip').checked });
+    await saveConfig(); renderAlertConfig();
+    showMsg(msg, state.config.alertOn ? `Alerta ligado para as ${fmtMin(alertTargetMin())}.` : 'Alerta desligado.', 'ok');
+  };
+  $('#aPerm').onclick = async () => {
+    if (!window.Notification) return showMsg($('#aMsg'), 'Este navegador não oferece notificações.', 'err');
+    try { await Notification.requestPermission(); } catch (e) {}
+    renderAlertConfig();
+  };
+  $('#aTest').onclick = () => alertCheck(true);
+  $('#cNews').onclick = () => showNews(true);
+  $('#alertClose').onclick = () => $('#alertPop').classList.remove('show');
+  $('#alertGo').onclick = () => { $('#alertPop').classList.remove('show'); selectDate(todayISO()); switchTab('dia'); };
+  setInterval(() => alertCheck(false), 30000);
   $('#bExport').onclick = exportBackup;
   $('#bImport').onclick = () => $('#bFile').click();
   $('#bFile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) await importBackup(f); };
@@ -2159,7 +2490,7 @@ async function init() {
   await initCloud();
 }
 
-window.__apont = { state, monthGoal, monthsInRange, extractDates, planMulti, synced, loadAll, get pending() { return pending; }, prepareHE, lvStatus, setLiveops, defaultTicket, pendingLiveops, classifyDay, dayInfo, holidayMap, easter, parseApontar, parseQuery, detectIntent, buildParts, validateParts, addParts, handleChat, segsInRange, extractTicket, extractDate };
+window.__apont = { state, dayStatus, chart, renderChart, alertCheck, alertTargetMin, monthGoal, monthsInRange, extractDates, planMulti, synced, loadAll, get pending() { return pending; }, prepareHE, lvStatus, setLiveops, defaultTicket, pendingLiveops, classifyDay, dayInfo, holidayMap, easter, parseApontar, parseQuery, detectIntent, buildParts, validateParts, addParts, handleChat, segsInRange, extractTicket, extractDate };
 init();
 })();
 </script>
