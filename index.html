@@ -123,6 +123,9 @@ tr.total td{font-weight:650;border-top:2px solid var(--border)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+th.lv-col,td.lv-col{text-align:center;width:110px}
+td.lv-col input,.lv-chk input{width:17px;height:17px;cursor:pointer;vertical-align:middle}
+.lv-chk{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--muted);font-weight:600}
 .badge.ok{background:var(--normal-bg);color:var(--normal)}
 .badge.pend{background:var(--warn-bg);color:var(--warn)}
 .chart-ctl{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
@@ -1134,6 +1137,14 @@ function lvStatus(date, c) {
   c = c || classifyDay(date, state.entries);
   return { done: true, at: f.at, normal: f.normal, extra: f.extra, changed: f.normal !== c.normal || f.extra !== c.extra };
 }
+async function setLiveopsMany(dates, on) {
+  for (const d of dates) {
+    if (on) { const c = classifyDay(d, state.entries); state.liveops[d] = { at: Date.now(), normal: c.normal, extra: c.extra }; }
+    else delete state.liveops[d];
+  }
+  await saveLiveops();
+  renderAll();
+}
 async function setLiveops(date, on) {
   if (on) {
     const c = classifyDay(date, state.entries);
@@ -1608,9 +1619,11 @@ function renderReport() {
   }
   const isDay = r.group === 'dia';
   const lvCell = date => { const lv = lvStatus(date); return lv.done ? (lv.changed ? '<span class="badge warn">Alterado</span>' : '<span class="badge normal">Lançado</span>') : '<span class="badge extra">Pendente</span>'; };
-  let html = `<table><thead><tr><th>${head}</th><th class="num">Normal</th><th class="num">Excedente</th><th class="num">Total</th>${isDay ? `<th>${esc(toolName())}</th>` : ''}</tr></thead><tbody>`;
-  for (const g of groups) html += `<tr><td>${g.label}</td><td class="num">${cellDur(g.normal)}</td><td class="num">${cellDur(g.extra)}</td><td class="num">${cellDur(g.normal + g.extra)}</td>${isDay ? `<td>${lvCell(g.key)}</td>` : ''}</tr>`;
-  html += `<tr class="total"><td>Total</td><td class="num">${cellDur(t.normal)}</td><td class="num">${cellDur(t.extra)}</td><td class="num">${cellDur(t.normal + t.extra)}</td>${isDay ? '<td></td>' : ''}</tr></tbody></table>`;
+  const okDia = d => { const lv = lvStatus(d); return lv.done && !lv.changed; };
+  const todosOk = isDay && groups.length && groups.every(g => okDia(g.key));
+  let html = `<table><thead><tr><th>${head}</th><th class="num">Normal</th><th class="num">Excedente</th><th class="num">Total</th>${isDay ? `<th>${esc(toolName())}</th><th class="lv-col"><label class="lv-chk" title="Marcar ou desmarcar todos os dias da lista"><input type="checkbox" id="rLvAll" ${todosOk ? 'checked' : ''}> Apontado</label></th>` : ''}</tr></thead><tbody>`;
+  for (const g of groups) html += `<tr><td>${g.label}</td><td class="num">${cellDur(g.normal)}</td><td class="num">${cellDur(g.extra)}</td><td class="num">${cellDur(g.normal + g.extra)}</td>${isDay ? `<td>${lvCell(g.key)}</td><td class="lv-col"><input type="checkbox" data-lvd="${g.key}" ${okDia(g.key) ? 'checked' : ''} aria-label="Apontado no ${esc(toolName())} em ${fmtDate(g.key)}"></td>` : ''}</tr>`;
+  html += `<tr class="total"><td>Total</td><td class="num">${cellDur(t.normal)}</td><td class="num">${cellDur(t.extra)}</td><td class="num">${cellDur(t.normal + t.extra)}</td>${isDay ? '<td></td><td></td>' : ''}</tr></tbody></table>`;
   $('#rTable').innerHTML = html;
 }
 function quickRange(q) {
@@ -2269,8 +2282,12 @@ function handleChat(raw) {
 
 
 /* ================= Novidades (changelog) ================= */
-const APP_VERSION = '7.0';
+const APP_VERSION = '7.1';
 const CHANGELOG = [
+  { v: '7.1', data: '09/10/2026', itens: [
+    'Relatórios agrupados por dia: nova coluna "Apontado" para marcar o lançamento no Liveops direto na tabela, dia a dia ou todos de uma vez.',
+    'Histórico de 19/01 a 31/08/2026 incluído como horas já apontadas.'
+  ] },
   { v: '7.0', data: '09/10/2026', itens: [
     'Gráfico de comparação mensal nos Relatórios: barras empilhadas de horas normais e excedentes, com seleção de meses e comparação entre anos.',
     'Alerta antes do fim do expediente, com pop-up do Windows e aviso dentro do programa; horário configurável por minutos antes do fim ou horário fixo.',
@@ -2360,6 +2377,22 @@ function bind() {
   $('#rTo').onchange = e => { state.report.to = e.target.value; renderReport(); };
   $('#rTicket').oninput = e => { state.report.ticket = e.target.value; renderReport(); };
   $('#rGroup').onchange = e => { state.report.group = e.target.value; renderReport(); };
+  $('#rTable').addEventListener('change', async e => {
+    const d = e.target.dataset && e.target.dataset.lvd;
+    if (d) { await setLiveops(d, e.target.checked); toast(e.target.checked ? `${fmtDate(d)} marcado como apontado` : `${fmtDate(d)} desmarcado`); return; }
+    if (e.target.id === 'rLvAll') {
+      const on = e.target.checked;
+      const dias = [...$('#rTable').querySelectorAll('[data-lvd]')].map(x => x.dataset.lvd)
+        .filter(x => { const lv = lvStatus(x); return on ? !(lv.done && !lv.changed) : lv.done; });
+      if (!dias.length) return renderReport();
+      const ok = await modal(on ? 'Marcar como apontado' : 'Desmarcar apontamento',
+        `${on ? 'Marcar' : 'Desmarcar'} <strong>${dias.length}</strong> dia(s) da lista como apontado(s) no ${esc(toolName())}?`,
+        [{ label: 'Cancelar', value: false }, { label: on ? 'Marcar todos' : 'Desmarcar todos', value: true, cls: 'primary' }]);
+      if (!ok) return renderReport();
+      await setLiveopsMany(dias, on);
+      toast(`${dias.length} dia(s) ${on ? 'marcado(s)' : 'desmarcado(s)'}`);
+    }
+  });
   $$('.quick [data-q]').forEach(b => b.onclick = () => quickRange(b.dataset.q));
   $('#rCsv').onclick = exportCsv;
 
@@ -2490,7 +2523,7 @@ async function init() {
   await initCloud();
 }
 
-window.__apont = { state, dayStatus, chart, renderChart, alertCheck, alertTargetMin, monthGoal, monthsInRange, extractDates, planMulti, synced, loadAll, get pending() { return pending; }, prepareHE, lvStatus, setLiveops, defaultTicket, pendingLiveops, classifyDay, dayInfo, holidayMap, easter, parseApontar, parseQuery, detectIntent, buildParts, validateParts, addParts, handleChat, segsInRange, extractTicket, extractDate };
+window.__apont = { state, setLiveopsMany, dayStatus, chart, renderChart, alertCheck, alertTargetMin, monthGoal, monthsInRange, extractDates, planMulti, synced, loadAll, get pending() { return pending; }, prepareHE, lvStatus, setLiveops, defaultTicket, pendingLiveops, classifyDay, dayInfo, holidayMap, easter, parseApontar, parseQuery, detectIntent, buildParts, validateParts, addParts, handleChat, segsInRange, extractTicket, extractDate };
 init();
 })();
 </script>
